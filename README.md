@@ -13,7 +13,7 @@ FAQ
   adding your user to "dialout" group with following commands:  
 
   <i><b>this add your user to dialout group permitting access to /dev/ttyUSB0 without root rights</i></b><br>
-  sudo adduser <user_name> dialout<br>
+  sudo adduser user_name dialout<br>
   sudo reboot
   
  
