@@ -24,11 +24,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "uart.h"
 #include "accessory.h"
 
 int main(void) {
+	int i;
+	char buffer[1024];
 
-	accessory_init();
+	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
+		perror("Unable to open serial port");
+		return EXIT_FAILURE;
+	}
 
-	accessory_finalize();
+	for (i = 0; i < 1000; i++) {
+	uart_send_buffer("ciao silverio", 13);
+	uart_receive_buffer_timout(buffer, 5, 1);
+	}
+
+	uart_close();
+
+	return EXIT_SUCCESS;
 }

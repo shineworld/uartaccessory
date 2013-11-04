@@ -24,4 +24,11 @@
 #ifndef UART_H_
 #define UART_H_
 
+int uart_open(const char *device_name, int speed, int parity);
+void uart_close();
+void uart_send_byte(unsigned char b);
+void uart_send_buffer(void *buffer, size_t size);
+void uart_receive_buffer(void* buffer, size_t size);
+int uart_receive_buffer_timout(void* buffer, size_t size, int timeout);
+
 #endif /* UART_H_ */
