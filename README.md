@@ -3,6 +3,12 @@ uartaccessory
 
 uart accessory emulator
 
+This project aim to help a user to develop an open accessory android application without left adb usb debug using a<br>
+linux powerd PC how android accessory device emulator.
+
+The scheme is simple:<br>
+  Android Device -> AOA ready application -> USB cable -> Linux PC -> <b>this software<b> ->/dev/ttyUSBx -> target device 
+
 
 FAQ
 ===
