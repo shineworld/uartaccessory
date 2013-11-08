@@ -24,10 +24,20 @@
 #ifndef ACCESSORY_H_
 #define ACCESSORY_H_
 
-#include <libusb.h>
+#include <stdint.h>
 
-void accessory_init();
+typedef struct {
+	uint16_t vendor_id;
+	uint16_t product_id;
+	int was_interface_claimed;
+	int was_kernel_driver_detached;
+	struct libusb_device_handle *handle;
+} accessory_device;
+
 void accessory_finalize();
-int accessory_setup(const char* manufacturer, const char* model, const char* description, const char* version, const char* uri, const char* serial);
+accessory_device *accessory_get_device();
+accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t product_id);
+void accessory_free_device(accessory_device *ad);
+int accessory_init();
 
 #endif /* ACCESSORY_H_ */

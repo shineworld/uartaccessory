@@ -21,44 +21,55 @@
  * SOFTWARE.
  */
 
+#include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
+#include <termios.h>
 
-#include "accessory.h"
+int getkey() {
+	int character;
+	struct termios old_term_attr;
+	struct termios new_term_attr;
 
-int main(void) {
-	accessory_device *ad = NULL;
+	// set the terminal to raw mode
+	tcgetattr(fileno(stdin), &old_term_attr);
+	memcpy(&new_term_attr, &old_term_attr, sizeof(struct termios));
+	new_term_attr.c_lflag &= ~(ECHO | ICANON);
+	new_term_attr.c_cc[VTIME] = 0;
+	new_term_attr.c_cc[VMIN] = 0;
+	tcsetattr(fileno(stdin), TCSANOW, &new_term_attr);
 
-	accessory_init();
-	puts("Looking for accessory device... (press CTRL+C to quit)");
-	while (1) {
-		ad = accessory_get_device();
-		if (ad != NULL) {
-			printf("find AOA ready device with ID %04x:%04x", ad->vendor_id, ad->product_id);
-			break;
-		}
-		usleep(500000);
+	// read a character from the stdin stream without blocking
+	// returns EOF (-1) if no character is available
+	character = fgetc(stdin);
+
+	// restore the original terminal attributes
+	tcsetattr(fileno(stdin), TCSANOW, &old_term_attr);
+
+	return character;
+}
+
+int kbhit(void) {
+	struct termios oldt, newt;
+	int ch;
+	int oldf;
+
+	tcgetattr(0, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(0, TCSANOW, &newt);
+	oldf = fcntl(0, F_GETFL, 0);
+	fcntl(0, F_SETFL, oldf | O_NONBLOCK);
+
+	ch = getchar();
+
+	tcsetattr(0, TCSANOW, &oldt);
+	fcntl(0, F_SETFL, oldf);
+
+	if (ch != EOF) {
+		ungetc(ch, stdin);
+		return 1;
 	}
-	accessory_free_device(ad);
-	accessory_finalize();
 
-/*
-	int i;
-	char buffer[1024];
-
-	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
-		perror("Unable to open serial port");
-		return EXIT_FAILURE;
-	}
-
-	for (i = 0; i < 1000; i++) {
-	uart_send_buffer("ciao silverio", 13);
-	uart_receive_buffer_timout(buffer, 5, 1);
-	}
-
-	uart_close();
-*/
-
-	return EXIT_SUCCESS;
+	return 0;
 }

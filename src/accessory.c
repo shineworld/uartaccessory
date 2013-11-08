@@ -22,20 +22,206 @@
  */
 
 #include "accessory.h"
+#include "usb_ch9.h"
 
-void accessory_init() {
-}
+#include <libusb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define USB_ACCESSORY_VENDOR_ID 		0x18D1
+#define USB_ACCESSORY_PRODUCT_ID 		0x2D00
+#define USB_ACCESSORY_ADB_PRODUCT_ID	0x2D01
+
+#define ACCESSORY_STRING_MANUFACTURER	0
+#define ACCESSORY_STRING_MODEL			1
+#define ACCESSORY_STRING_DESCRIPTION	2
+#define ACCESSORY_STRING_VERSION		3
+#define ACCESSORY_STRING_URI			4
+#define ACCESSORY_STRING_SERIAL		5
+
+#define ACCESSORY_GET_PROTOCOL			51
+#define ACCESSORY_SEND_STRING			52
+#define ACCESSORY_START				53
+#define ACCESSORY_REGISTER_HID			54
+#define ACCESSORY_UNREGISTER_HID		55
+#define ACCESSORY_SET_HID_REPORT_DESC	56
+#define ACCESSORY_SEND_HID_EVENT		57
+#define ACCESSORY_SET_AUDIO_MODE		58
+
+#define PROTOCOL_VERSION    			2
+
+#define ACCESSORY_MANUFACTURER			"FTDI"
+#define ACCESSORY_MODEL				"Android Accessory FT312D"
+#define ACCESSORY_DESCRIPTION			"FTDI Android Accessory FT312D"
+#define ACCESSORY_VERSION				"1.0"
+#define ACCESSORY_URI					"http://www.ftdichip.com/Android.htm"
+#define ACCESSORY_SERIAL				"FTDI FT312D"
+
+#define VOID_ID						0xFFFF
+
+static int accessory_setup(accessory_device*, const char*, const char*, const char*, const char*, const char*, const char*);
+
+static libusb_context *ctx = NULL;
 
 void accessory_finalize() {
+	if (ctx != NULL) {
+		libusb_exit(ctx);
+		ctx = NULL;
+	}
 }
 
-int accessory_setup(
-	const char* manufacturer,
-	const char* model,
-	const char* description,
-	const char* version,
-	const char* uri,
-	const char* serial
-) {
+accessory_device *accessory_get_device() {
+	return accessory_get_device_with_vid_pid(VOID_ID, VOID_ID);
+}
+
+accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t product_id) {
+	if (ctx == NULL)
+		return NULL;
+
+	if (vendor_id != VOID_ID && product_id != VOID_ID) {
+		accessory_device *ad = malloc(sizeof(accessory_device));
+		memset(ad, 0, sizeof(accessory_device));
+
+		ad->product_id = product_id;
+		ad->vendor_id = vendor_id;
+
+		ad->handle = libusb_open_device_with_vid_pid(ctx, ad->vendor_id, ad->product_id);
+		if (ad->handle == NULL) {
+			accessory_free_device(ad);
+			return NULL;
+		}
+
+		// check whether a kernel driver is attached to interface #0. If so, we'll need to detach it.
+		if (libusb_kernel_driver_active(ad->handle, 0)) {
+			int res = libusb_detach_kernel_driver(ad->handle, 0);
+			if (res == 0) {
+				ad->was_kernel_driver_detached = 1;
+			} else {
+				accessory_free_device(ad);
+				return NULL;
+			}
+		}
+
+		ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
+		if (ad->was_interface_claimed != 0) {
+			accessory_free_device(ad);
+			return NULL;
+		}
+
+		if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
+			accessory_free_device(ad);
+			return NULL;
+		}
+
+		return ad;
+	} else {
+		int i;
+		ssize_t cnt;
+		libusb_device **devs;
+
+		cnt = libusb_get_device_list(ctx, &devs);
+		if (cnt <= 0) {
+			return NULL;
+		}
+
+		for (i = 0; i < cnt; i++) {
+			struct libusb_device_descriptor desc;
+
+			int r = libusb_get_device_descriptor(devs[i], &desc);
+			if (r < 0)
+				continue;
+
+			accessory_device *ad = malloc(sizeof(accessory_device));
+			memset(ad, 0, sizeof(accessory_device));
+
+			ad->vendor_id = desc.idVendor;
+			ad->product_id = desc.idProduct;
+
+			ad->handle = libusb_open_device_with_vid_pid(ctx, ad->vendor_id, ad->product_id);
+			if (ad->handle == NULL) {
+				accessory_free_device(ad);
+				continue;
+			}
+
+			// check whether a kernel driver is attached to interface #0. If so, we'll need to detach it.
+			if (libusb_kernel_driver_active(ad->handle, 0) == 1) {
+				if (libusb_detach_kernel_driver(ad->handle, 0) == 0) {
+					ad->was_kernel_driver_detached = 1;
+				} else {
+					accessory_free_device(ad);
+					continue;
+				}
+			}
+
+			ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
+			if (ad->was_interface_claimed != 0) {
+				accessory_free_device(ad);
+				continue;
+			}
+
+			if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
+				accessory_free_device(ad);
+				continue;
+			} else {
+				libusb_free_device_list(devs, 1);
+				return ad;
+			}
+		}
+
+		libusb_free_device_list(devs, 1);
+		return NULL;
+	}
+}
+
+void accessory_free_device(accessory_device *ad) {
+	if (ctx == NULL)
+		return;
+
+	if (ad != NULL) {
+		if (ad->was_interface_claimed)
+			libusb_release_interface(ad->handle, 0);
+
+		if (ad->was_kernel_driver_detached)
+			libusb_attach_kernel_driver(ad->handle, 0);
+
+		if (ad->handle)
+			libusb_close(ad->handle);
+
+		free(ad);
+	}
+}
+
+int accessory_init() {
+	if (ctx != NULL)
+		return -1;
+
+	int r = libusb_init(&ctx);
+	if (r < 0) {
+		return -1;
+	}
+
+	libusb_set_debug(ctx, 3);
+
+	return 0;
+}
+
+static int accessory_setup(accessory_device *ad, const char* manufacturer, const char* model, const char* description, const char* version, const char* uri, const char* serial) {
+	int res;
+	unsigned char ioBuffer[2];
+
+	if (ctx == NULL || ad == NULL)
+		return -1;
+
+	if (ad->vendor_id == USB_ACCESSORY_VENDOR_ID) {
+		if (ad->product_id == USB_ACCESSORY_PRODUCT_ID || ad->product_id == USB_ACCESSORY_ADB_PRODUCT_ID)
+			return 0;
+	}
+
+	res = libusb_control_transfer(ad->handle, USB_DIR_IN | USB_TYPE_VENDOR, ACCESSORY_GET_PROTOCOL, 0, 0, ioBuffer, 2, 0);
+	if (res < 0) {
+		return -1;
+	}
+
 	return 0;
 }

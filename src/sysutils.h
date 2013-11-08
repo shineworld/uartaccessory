@@ -21,44 +21,10 @@
  * SOFTWARE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#ifndef SYSUTILS_H_
+#define SYSUTILS_H_
 
-#include "accessory.h"
+int getkey();
+int kbhit();
 
-int main(void) {
-	accessory_device *ad = NULL;
-
-	accessory_init();
-	puts("Looking for accessory device... (press CTRL+C to quit)");
-	while (1) {
-		ad = accessory_get_device();
-		if (ad != NULL) {
-			printf("find AOA ready device with ID %04x:%04x", ad->vendor_id, ad->product_id);
-			break;
-		}
-		usleep(500000);
-	}
-	accessory_free_device(ad);
-	accessory_finalize();
-
-/*
-	int i;
-	char buffer[1024];
-
-	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
-		perror("Unable to open serial port");
-		return EXIT_FAILURE;
-	}
-
-	for (i = 0; i < 1000; i++) {
-	uart_send_buffer("ciao silverio", 13);
-	uart_receive_buffer_timout(buffer, 5, 1);
-	}
-
-	uart_close();
-*/
-
-	return EXIT_SUCCESS;
-}
+#endif /* SYSUTILS_H_ */
