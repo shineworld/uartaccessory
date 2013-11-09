@@ -29,6 +29,9 @@
 typedef struct {
 	uint16_t vendor_id;
 	uint16_t product_id;
+	int aoa_version;
+	uint16_t aoa_vendor_id;
+	uint16_t aoa_product_id;
 	int was_interface_claimed;
 	int was_kernel_driver_detached;
 	struct libusb_device_handle *handle;

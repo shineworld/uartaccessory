@@ -22,12 +22,14 @@
  */
 
 #include "accessory.h"
-#include "usb_ch9.h"
 
 #include <libusb.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#include "usb_ch9.h"
 
 #define USB_ACCESSORY_VENDOR_ID 		0x18D1
 #define USB_ACCESSORY_PRODUCT_ID 		0x2D00
@@ -59,8 +61,11 @@
 #define ACCESSORY_SERIAL				"FTDI FT312D"
 
 #define VOID_ID						0xFFFF
+#define VMWARE_ID						0x0E0F
 
-static int accessory_setup(accessory_device*, const char*, const char*, const char*, const char*, const char*, const char*);
+#define CONNECT_TRIES					10
+
+static int accessory_setup(accessory_device *, const char *, const char *, const char *, const char *, const char *, const char *);
 
 static libusb_context *ctx = NULL;
 
@@ -132,6 +137,9 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 			if (r < 0)
 				continue;
 
+			if (desc.bDeviceClass != 0 || desc.idVendor == VMWARE_ID)
+				continue;
+
 			accessory_device *ad = malloc(sizeof(accessory_device));
 			memset(ad, 0, sizeof(accessory_device));
 
@@ -160,7 +168,8 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 				continue;
 			}
 
-			if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
+			if (accessory_setup(ad, ACCESSORY_MANUFACTURER, ACCESSORY_MODEL, ACCESSORY_DESCRIPTION, ACCESSORY_VERSION, ACCESSORY_URI, ACCESSORY_SERIAL) < 0) {
+//			if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
 				accessory_free_device(ad);
 				continue;
 			} else {
@@ -201,27 +210,95 @@ int accessory_init() {
 		return -1;
 	}
 
-	libusb_set_debug(ctx, 3);
+	libusb_set_debug(ctx, 0);
 
 	return 0;
 }
 
-static int accessory_setup(accessory_device *ad, const char* manufacturer, const char* model, const char* description, const char* version, const char* uri, const char* serial) {
-	int res;
-	unsigned char ioBuffer[2];
+static int accessory_setup(accessory_device *ad, const char *manufacturer, const char *model, const char *description, const char *version, const char *uri, const char *serial) {
+	int res, tries;
+	unsigned char buffer[2];
 
 	if (ctx == NULL || ad == NULL)
 		return -1;
 
 	if (ad->vendor_id == USB_ACCESSORY_VENDOR_ID) {
 		if (ad->product_id == USB_ACCESSORY_PRODUCT_ID || ad->product_id == USB_ACCESSORY_ADB_PRODUCT_ID)
-			return 0;
+			return -1;
 	}
 
-	res = libusb_control_transfer(ad->handle, USB_DIR_IN | USB_TYPE_VENDOR, ACCESSORY_GET_PROTOCOL, 0, 0, ioBuffer, 2, 0);
-	if (res < 0) {
+	res = libusb_control_transfer(ad->handle, USB_DIR_IN | USB_TYPE_VENDOR, ACCESSORY_GET_PROTOCOL, 0, 0, buffer, 2, 0);
+	if (res < 0)
 		return -1;
+
+	ad->aoa_version = buffer[1] << 8 | buffer[0];
+
+	usleep(1000);
+
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 0, (unsigned char *) manufacturer, strlen(manufacturer), 0);
+	if (res < 0)
+		return -1;
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 1, (unsigned char *) model, strlen(model) + 1, 0);
+	if (res < 0)
+		return -1;
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 2, (unsigned char *) description, strlen(description) + 1, 0);
+	if (res < 0)
+		return -1;
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 3, (unsigned char *) version, strlen(version) + 1, 0);
+	if (res < 0)
+		return -1;
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 4, (unsigned char *) uri, strlen(uri) + 1, 0);
+	if (res < 0)
+		return -1;
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 5, (unsigned char *) serial, strlen(serial) + 1, 0);
+	if (res < 0)
+		return -1;
+
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_START, 0, 0, NULL, 0, 0);
+	if (res < 0) {
+		//	Cause problems with some ANDROID devices running on Rockchip & AllWinner kernels we need to ignore
+		//	a response error (-ESHUTDOWN)(-108) and continue with accessory device claim operations.
+
+		// return -1;
 	}
+
+	usleep(1000);
+
+	if (ad->was_interface_claimed) {
+		libusb_release_interface(ad->handle, 0);
+		ad->was_interface_claimed = 0;
+	}
+
+	usleep(1000);
+
+	tries = 0;
+	while (1) {
+		ad->handle = libusb_open_device_with_vid_pid(ctx, USB_ACCESSORY_VENDOR_ID, USB_ACCESSORY_PRODUCT_ID);
+		if (ad->handle != NULL) {
+			ad->aoa_vendor_id = USB_ACCESSORY_VENDOR_ID;
+			ad->aoa_product_id = USB_ACCESSORY_VENDOR_ID;
+			break;
+		}
+
+		usleep(1000);
+
+		ad->handle = libusb_open_device_with_vid_pid(ctx, USB_ACCESSORY_VENDOR_ID, USB_ACCESSORY_ADB_PRODUCT_ID);
+		if (ad->handle != NULL) {
+			ad->aoa_vendor_id = USB_ACCESSORY_VENDOR_ID;
+			ad->aoa_product_id = USB_ACCESSORY_VENDOR_ID;
+			break;
+		}
+
+		tries++;
+		if (tries >= CONNECT_TRIES)
+			return -1;
+
+		usleep(1 * 1000 * 1000);
+	}
+
+	ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
+	if (ad->was_interface_claimed != 0)
+		return -1;
 
 	return 0;
 }

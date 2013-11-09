@@ -35,7 +35,12 @@ int main(void) {
 	while (1) {
 		ad = accessory_get_device();
 		if (ad != NULL) {
-			printf("find AOA ready device with ID %04x:%04x", ad->vendor_id, ad->product_id);
+			printf("\nFound AOA ready device with ID %04x:%04x and AOA version %d connected how ID %04x:%04x\n\n",
+					ad->vendor_id,
+					ad->product_id,
+					ad->aoa_version,
+					ad->aoa_vendor_id,
+					ad->aoa_product_id);
 			break;
 		}
 		usleep(500000);
