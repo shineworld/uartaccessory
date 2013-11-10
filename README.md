@@ -8,8 +8,10 @@ This project aim to help a user to develop an open accessory android application
 Actually it simulate the FDTI FT312D behaviour detecting first packet after AOA switch in which are contained all info for correctly set UART device.
 Also AOA fingerstamp sent to Android is for FTDI FT312D but can be fastly changed to anyother in code.
 
+The final version will support more device models to cover dummy UARTs with fixed settings like industrial chip like FTDI.
+
 The scheme is simple:<br>
-  Android Device -> AOA ready application -> USB cable -> Linux PC -> <b>this software<b> ->/dev/ttyUSBx -> target device 
+  Android Device -> AOA ready application -> USB cable -> Linux PC -> <b>this software</b> ->/dev/ttyUSBx -> target device 
 
 
 FAQ
@@ -28,7 +30,7 @@ FAQ
 
   To enable libusb log message is only necessary to define the environment variable <b>LIBUSB_DEBUG</b> to desired value:
   
-  Level 0: no messages ever printed by the library (default)
-  Level 1: error messages are printed to stderr
-  Level 2: warning and error messages are printed to stderr
-  Level 3: informational messages are printed to stdout, warning and error messages are printed to stderr   
+  Level 0: no messages ever printed by the library (default)<br>
+  Level 1: error messages are printed to stderr<br>
+  Level 2: warning and error messages are printed to stderr<br>
+  Level 3: informational messages are printed to stdout, warning and error messages are printed to stderr<br>

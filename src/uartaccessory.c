@@ -21,12 +21,13 @@
  * SOFTWARE.
  */
 
+#include <libusb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <libusb.h>
 
 #include "accessory.h"
+#include "uart.h"
 
 #define ACCESSORY_BUFFER_SIZE 1024
 
@@ -52,6 +53,14 @@ int main(void) {
 	if (buffer == NULL)
 		return EXIT_FAILURE;
 
+//	 int i;
+//	 char buffer[1024];
+
+	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
+		perror("Unable to open serial port");
+		return EXIT_FAILURE;
+	}
+
 	int first_packet = 1;
 	while (1) {
 		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
@@ -61,11 +70,18 @@ int main(void) {
 				first_packet = 0;
 			} else {
 				accessory_send_data(ad, buffer, cnt);
+				uart_send_buffer(buffer, cnt);
 			}
 		} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
 			puts("\nAOA device disconnected !");
 			break;
 		}
+
+		cnt = uart_receive_buffer_timout(buffer, 64, 1);
+		if (cnt > 0) {
+			accessory_send_data(ad, buffer, cnt);
+		}
+
 		usleep(1000);
 	}
 
@@ -93,7 +109,6 @@ int main(void) {
 
 	return EXIT_SUCCESS;
 }
-
 
 static void print_buffer(unsigned char *buffer, int size) {
 	int i;
