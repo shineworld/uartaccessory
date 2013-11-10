@@ -3,8 +3,10 @@ uartaccessory
 
 uart accessory emulator
 
-This project aim to help a user to develop an open accessory android application without left adb usb debug using a<br>
-linux powerd PC how android accessory device emulator.
+This project aim to help a user to develop an open accessory android application without left adb usb debug using a linux powerd PC how android accessory device emulator.
+
+Actually it simulate the FDTI FT312D behaviour detecting first packet after AOA switch in which are contained all info for correctly set UART device.
+Also AOA fingerstamp sent to Android is for FTDI FT312D but can be fastly changed to anyother in code.
 
 The scheme is simple:<br>
   Android Device -> AOA ready application -> USB cable -> Linux PC -> <b>this software<b> ->/dev/ttyUSBx -> target device 
@@ -21,5 +23,3 @@ FAQ
   <i><b>this add your user to dialout group permitting access to /dev/ttyUSB0 without root rights</i></b><br>
   sudo adduser user_name dialout<br>
   sudo reboot
-  
- 
