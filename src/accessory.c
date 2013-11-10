@@ -307,7 +307,6 @@ static int accessory_setup(accessory_device *ad) {
 	return 0;
 }
 
-
 int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
 	const static int PACKET_BULK_LEN = 64;
 	unsigned char answer[PACKET_BULK_LEN];
@@ -328,4 +327,8 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 }
 
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
+	int transferred;
+
+    libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), buffer, size, &transferred, 0);
+    return;
 }

@@ -30,6 +30,8 @@
 
 #define ACCESSORY_BUFFER_SIZE 1024
 
+static void print_buffer(unsigned char *buffer, int size);
+
 int main(void) {
 	accessory_device *ad = NULL;
 
@@ -39,32 +41,28 @@ int main(void) {
 	while (1) {
 		ad = accessory_get_device();
 		if (ad != NULL) {
-			printf("\nFound AOA ready device with ID %04x:%04x and AOA version %d connected how ID %04x:%04x\n\n",
-					ad->vendor_id,
-					ad->product_id,
-					ad->aoa_version,
-					ad->aoa_vendor_id,
-					ad->aoa_product_id);
+			printf("\nFound AOA ready device with ID %04x:%04x and AOA version %d connected how ID %04x:%04x\n\n", ad->vendor_id, ad->product_id, ad->aoa_version, ad->aoa_vendor_id, ad->aoa_product_id);
 			break;
 		}
 		usleep(500000);
 	}
-
 
 	puts("Capture and show data flow coming from Android device... (press CTRL+C to quit)");
 	unsigned char *buffer = malloc(ACCESSORY_BUFFER_SIZE);
 	if (buffer == NULL)
 		return EXIT_FAILURE;
 
+	int first_packet = 1;
 	while (1) {
 		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
 		if (cnt > 0) {
-			int i;
-			for (i = 0; i < cnt; i++)
-				printf("%02X ", buffer[i]);
-			fflush(stdout);
-		}
-		else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
+			print_buffer(buffer, cnt);
+			if (first_packet) {
+				first_packet = 0;
+			} else {
+				accessory_send_data(ad, buffer, cnt);
+			}
+		} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
 			puts("\nAOA device disconnected !");
 			break;
 		}
@@ -76,22 +74,39 @@ int main(void) {
 	accessory_free_device(ad);
 	accessory_finalize();
 
-/*
-	int i;
-	char buffer[1024];
+	/*
+	 int i;
+	 char buffer[1024];
 
-	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
-		perror("Unable to open serial port");
-		return EXIT_FAILURE;
-	}
+	 if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
+	 perror("Unable to open serial port");
+	 return EXIT_FAILURE;
+	 }
 
-	for (i = 0; i < 1000; i++) {
-	uart_send_buffer("ciao silverio", 13);
-	uart_receive_buffer_timout(buffer, 5, 1);
-	}
+	 for (i = 0; i < 1000; i++) {
+	 uart_send_buffer("ciao silverio", 13);
+	 uart_receive_buffer_timout(buffer, 5, 1);
+	 }
 
-	uart_close();
-*/
+	 uart_close();
+	 */
 
 	return EXIT_SUCCESS;
+}
+
+
+static void print_buffer(unsigned char *buffer, int size) {
+	int i;
+	static int cnt = 0;
+
+	for (i = 0; i < size; i++) {
+		if (cnt >= 16) {
+			cnt = 0;
+			puts("");
+		}
+		cnt++;
+		printf("%02X ", buffer[i]);
+	}
+
+	fflush(stdout);
 }

@@ -23,3 +23,12 @@ FAQ
   <i><b>this add your user to dialout group permitting access to /dev/ttyUSB0 without root rights</i></b><br>
   sudo adduser user_name dialout<br>
   sudo reboot
+  
+- How can I enable libusb debug and catch eventual interface error logs ?
+
+  To enable libusb log message is only necessary to define the environment variable <b>LIBUSB_DEBUG</b> to desired value:
+  
+  Level 0: no messages ever printed by the library (default)
+  Level 1: error messages are printed to stderr
+  Level 2: warning and error messages are printed to stderr
+  Level 3: informational messages are printed to stdout, warning and error messages are printed to stderr   
