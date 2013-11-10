@@ -24,6 +24,7 @@
 #include <libusb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "accessory.h"
@@ -53,10 +54,7 @@ int main(void) {
 	if (buffer == NULL)
 		return EXIT_FAILURE;
 
-//	 int i;
-//	 char buffer[1024];
-
-	if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
+	if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
 		perror("Unable to open serial port");
 		return EXIT_FAILURE;
 	}
@@ -65,7 +63,7 @@ int main(void) {
 	while (1) {
 		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
 		if (cnt > 0) {
-			print_buffer(buffer, cnt);
+//			print_buffer(buffer, cnt);
 			if (first_packet) {
 				first_packet = 0;
 			} else {
@@ -77,9 +75,10 @@ int main(void) {
 			break;
 		}
 
-		cnt = uart_receive_buffer_timout(buffer, 64, 1);
+		cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
 		if (cnt > 0) {
 			accessory_send_data(ad, buffer, cnt);
+//			print_buffer(buffer, cnt);
 		}
 
 		usleep(1000);
@@ -90,24 +89,27 @@ int main(void) {
 	accessory_free_device(ad);
 	accessory_finalize();
 
-	/*
-	 int i;
-	 char buffer[1024];
-
-	 if (uart_open("/dev/ttyUSB0", 115200, 0) < 0) {
-	 perror("Unable to open serial port");
-	 return EXIT_FAILURE;
-	 }
-
-	 for (i = 0; i < 1000; i++) {
-	 uart_send_buffer("ciao silverio", 13);
-	 uart_receive_buffer_timout(buffer, 5, 1);
-	 }
-
-	 uart_close();
-	 */
-
 	return EXIT_SUCCESS;
+}
+
+static void check_uart() {
+	int i;
+	char buffer[1024];
+
+	char COMMAND_TC[] = { 0xAA, 0x02, 0x54, 0x43, 0x1A };
+
+	if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
+		perror("Unable to open serial port");
+		return;
+	}
+
+	for (i = 0; i < 10; i++) {
+		uart_send_buffer(&COMMAND_TC[0], 5);
+		usleep(200 * 1000);
+		uart_receive_buffer_timout(&buffer[0], 5, 1);
+	}
+
+	uart_close();
 }
 
 static void print_buffer(unsigned char *buffer, int size) {
