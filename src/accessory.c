@@ -22,14 +22,13 @@
  */
 
 #include "accessory.h"
+#include "usb_ch9.h"
 
 #include <libusb.h>
-//#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "usb_ch9.h"
 
 #define USB_ACCESSORY_VENDOR_ID 		0x18D1
 #define USB_ACCESSORY_PRODUCT_ID 		0x2D00
@@ -64,8 +63,14 @@
 #define VMWARE_ID						0x0E0F
 
 #define CONNECT_TRIES					10
+#define CONNECT_TRIES_MS_DELAY			1000
 
-static int accessory_setup(accessory_device *, const char *, const char *, const char *, const char *, const char *, const char *);
+#define LIBUSB_VERBOSE_LEVEL			0
+
+#define ENDPOINT_BULK_IN 				0x81
+#define ENDPOINT_BULK_OUT 				0x04
+
+static int accessory_setup(accessory_device *ad);
 
 static libusb_context *ctx = NULL;
 
@@ -114,7 +119,7 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 			return NULL;
 		}
 
-		if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
+		if (accessory_setup(ad) < 0) {
 			accessory_free_device(ad);
 			return NULL;
 		}
@@ -168,8 +173,7 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 				continue;
 			}
 
-			if (accessory_setup(ad, ACCESSORY_MANUFACTURER, ACCESSORY_MODEL, ACCESSORY_DESCRIPTION, ACCESSORY_VERSION, ACCESSORY_URI, ACCESSORY_SERIAL) < 0) {
-//			if (accessory_setup(ad, NULL, NULL, NULL, NULL, NULL, NULL) < 0) {
+			if (accessory_setup(ad) < 0) {
 				accessory_free_device(ad);
 				continue;
 			} else {
@@ -210,12 +214,12 @@ int accessory_init() {
 		return -1;
 	}
 
-	libusb_set_debug(ctx, 0);
+	libusb_set_debug(ctx, LIBUSB_VERBOSE_LEVEL);
 
 	return 0;
 }
 
-static int accessory_setup(accessory_device *ad, const char *manufacturer, const char *model, const char *description, const char *version, const char *uri, const char *serial) {
+static int accessory_setup(accessory_device *ad) {
 	int res, tries;
 	unsigned char buffer[2];
 
@@ -235,22 +239,22 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 
 	usleep(1000);
 
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 0, (unsigned char *) manufacturer, strlen(manufacturer), 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 0, (unsigned char *) ACCESSORY_MANUFACTURER, strlen(ACCESSORY_MANUFACTURER), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 1, (unsigned char *) model, strlen(model) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 1, (unsigned char *) ACCESSORY_MODEL, strlen(ACCESSORY_MODEL) + 1, 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 2, (unsigned char *) description, strlen(description) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 2, (unsigned char *) ACCESSORY_DESCRIPTION, strlen(ACCESSORY_DESCRIPTION) + 1, 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 3, (unsigned char *) version, strlen(version) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 3, (unsigned char *) ACCESSORY_VERSION, strlen(ACCESSORY_VERSION) + 1, 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 4, (unsigned char *) uri, strlen(uri) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 4, (unsigned char *) ACCESSORY_URI, strlen(ACCESSORY_URI) + 1, 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 5, (unsigned char *) serial, strlen(serial) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 5, (unsigned char *) ACCESSORY_SERIAL, strlen(ACCESSORY_SERIAL) + 1, 0);
 	if (res < 0)
 		return -1;
 
@@ -264,10 +268,10 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 
 	usleep(1000);
 
-	if (ad->was_interface_claimed) {
-		libusb_release_interface(ad->handle, 0);
-		ad->was_interface_claimed = 0;
-	}
+	libusb_release_interface(ad->handle, 0);
+	ad->was_interface_claimed = 0;
+	libusb_close(ad->handle);
+	ad->handle = 0;
 
 	usleep(1000);
 
@@ -276,7 +280,7 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 		ad->handle = libusb_open_device_with_vid_pid(ctx, USB_ACCESSORY_VENDOR_ID, USB_ACCESSORY_PRODUCT_ID);
 		if (ad->handle != NULL) {
 			ad->aoa_vendor_id = USB_ACCESSORY_VENDOR_ID;
-			ad->aoa_product_id = USB_ACCESSORY_VENDOR_ID;
+			ad->aoa_product_id = USB_ACCESSORY_PRODUCT_ID;
 			break;
 		}
 
@@ -285,7 +289,7 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 		ad->handle = libusb_open_device_with_vid_pid(ctx, USB_ACCESSORY_VENDOR_ID, USB_ACCESSORY_ADB_PRODUCT_ID);
 		if (ad->handle != NULL) {
 			ad->aoa_vendor_id = USB_ACCESSORY_VENDOR_ID;
-			ad->aoa_product_id = USB_ACCESSORY_VENDOR_ID;
+			ad->aoa_product_id = USB_ACCESSORY_ADB_PRODUCT_ID;
 			break;
 		}
 
@@ -293,7 +297,7 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 		if (tries >= CONNECT_TRIES)
 			return -1;
 
-		usleep(1 * 1000 * 1000);
+		usleep(CONNECT_TRIES_MS_DELAY * 1000);
 	}
 
 	ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
@@ -301,4 +305,27 @@ static int accessory_setup(accessory_device *ad, const char *manufacturer, const
 		return -1;
 
 	return 0;
+}
+
+
+int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
+	const static int PACKET_BULK_LEN = 64;
+	unsigned char answer[PACKET_BULK_LEN];
+	const static int TIMEOUT = 1000;
+	int transferred;
+
+	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, answer, PACKET_BULK_LEN - 1, &transferred, TIMEOUT);
+	if (r < 0)
+		if (r != -7)
+			return r;
+		else
+			return 0;
+	else {
+		if (transferred > 0)
+			memcpy(buffer, &answer, transferred);
+	}
+	return transferred;
+}
+
+void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
 }

@@ -42,5 +42,7 @@ accessory_device *accessory_get_device();
 accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t product_id);
 void accessory_free_device(accessory_device *ad);
 int accessory_init();
+int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size);
+void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size);
 
 #endif /* ACCESSORY_H_ */

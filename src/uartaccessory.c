@@ -24,13 +24,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <libusb.h>
 
 #include "accessory.h"
+
+#define ACCESSORY_BUFFER_SIZE 1024
 
 int main(void) {
 	accessory_device *ad = NULL;
 
 	accessory_init();
+
 	puts("Looking for accessory device... (press CTRL+C to quit)");
 	while (1) {
 		ad = accessory_get_device();
@@ -45,6 +49,30 @@ int main(void) {
 		}
 		usleep(500000);
 	}
+
+
+	puts("Capture and show data flow coming from Android device... (press CTRL+C to quit)");
+	unsigned char *buffer = malloc(ACCESSORY_BUFFER_SIZE);
+	if (buffer == NULL)
+		return EXIT_FAILURE;
+
+	while (1) {
+		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
+		if (cnt > 0) {
+			int i;
+			for (i = 0; i < cnt; i++)
+				printf("%02X ", buffer[i]);
+			fflush(stdout);
+		}
+		else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
+			puts("\nAOA device disconnected !");
+			break;
+		}
+		usleep(1000);
+	}
+
+	free(buffer);
+
 	accessory_free_device(ad);
 	accessory_finalize();
 
