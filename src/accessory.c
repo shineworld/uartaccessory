@@ -60,6 +60,7 @@
 #define ACCESSORY_SERIAL				"FTDI FT312D"
 
 #define VOID_ID						0xFFFF
+#define FDTI_ID						0x0403
 #define VMWARE_ID						0x0E0F
 
 #define CONNECT_TRIES					10
@@ -142,7 +143,7 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 			if (r < 0)
 				continue;
 
-			if (desc.bDeviceClass != 0 || desc.idVendor == VMWARE_ID)
+			if (desc.bDeviceClass != 0 || desc.idVendor == VMWARE_ID || desc.idVendor == FDTI_ID)
 				continue;
 
 			accessory_device *ad = malloc(sizeof(accessory_device));
@@ -310,7 +311,7 @@ static int accessory_setup(accessory_device *ad) {
 int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
 	const static int PACKET_BULK_LEN = 64;
 	unsigned char answer[PACKET_BULK_LEN];
-	const static int TIMEOUT = 1000;
+	const static int TIMEOUT = 10;
 	int transferred;
 
 	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, answer, PACKET_BULK_LEN - 1, &transferred, TIMEOUT);

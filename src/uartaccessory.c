@@ -63,11 +63,10 @@ int main(void) {
 	while (1) {
 		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
 		if (cnt > 0) {
-//			print_buffer(buffer, cnt);
+			print_buffer(buffer, cnt);
 			if (first_packet) {
 				first_packet = 0;
 			} else {
-				accessory_send_data(ad, buffer, cnt);
 				uart_send_buffer(buffer, cnt);
 			}
 		} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
@@ -78,7 +77,7 @@ int main(void) {
 		cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
 		if (cnt > 0) {
 			accessory_send_data(ad, buffer, cnt);
-//			print_buffer(buffer, cnt);
+			print_buffer(buffer, cnt);
 		}
 
 		usleep(1000);
