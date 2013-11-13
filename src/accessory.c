@@ -22,13 +22,13 @@
  */
 
 #include "accessory.h"
-#include "usb_ch9.h"
 
 #include <libusb.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "usb_ch9.h"
 
 #define USB_ACCESSORY_VENDOR_ID 		0x18D1
 #define USB_ACCESSORY_PRODUCT_ID 		0x2D00
@@ -50,20 +50,18 @@
 #define ACCESSORY_SEND_HID_EVENT		57
 #define ACCESSORY_SET_AUDIO_MODE		58
 
-#define PROTOCOL_VERSION    			2
-
-#define ACCESSORY_MANUFACTURER			"FTDI"
-#define ACCESSORY_MODEL				"Android Accessory FT312D"
-#define ACCESSORY_DESCRIPTION			"FTDI Android Accessory FT312D"
+#define ACCESSORY_MANUFACTURER			"SHINE"
+#define ACCESSORY_MODEL				"Android Accessory Emulator"
+#define ACCESSORY_DESCRIPTION			"SHINE Android Accessory Emulator"
 #define ACCESSORY_VERSION				"1.0"
-#define ACCESSORY_URI					"http://www.ftdichip.com/Android.htm"
-#define ACCESSORY_SERIAL				"FTDI FT312D"
+#define ACCESSORY_URI					"https://github.com/shineworld/uartaccessory"
+#define ACCESSORY_SERIAL				"SHINE Emulator"
 
 #define VOID_ID						0xFFFF
 #define FDTI_ID						0x0403
 #define VMWARE_ID						0x0E0F
 
-#define CONNECT_TRIES					10
+#define CONNECT_TRIES					15
 #define CONNECT_TRIES_MS_DELAY			1000
 
 #define LIBUSB_VERBOSE_LEVEL			0
@@ -228,8 +226,11 @@ static int accessory_setup(accessory_device *ad) {
 		return -1;
 
 	if (ad->vendor_id == USB_ACCESSORY_VENDOR_ID) {
-		if (ad->product_id == USB_ACCESSORY_PRODUCT_ID || ad->product_id == USB_ACCESSORY_ADB_PRODUCT_ID)
-			return -1;
+		if (ad->product_id == USB_ACCESSORY_PRODUCT_ID || ad->product_id == USB_ACCESSORY_ADB_PRODUCT_ID) {
+			ad->aoa_vendor_id = ad->vendor_id;
+			ad->aoa_product_id = ad->product_id;
+			return 0;
+		}
 	}
 
 	res = libusb_control_transfer(ad->handle, USB_DIR_IN | USB_TYPE_VENDOR, ACCESSORY_GET_PROTOCOL, 0, 0, buffer, 2, 0);

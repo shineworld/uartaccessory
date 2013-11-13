@@ -32,58 +32,57 @@
 
 #define ACCESSORY_BUFFER_SIZE 1024
 
-static void print_buffer(unsigned char *buffer, int size);
+static void print_buffer(unsigned char *buffer, int size, int type);
 
 int main(void) {
 	accessory_device *ad = NULL;
 
+	puts("");
 	accessory_init();
 
-	puts("Looking for accessory device... (press CTRL+C to quit)");
 	while (1) {
-		ad = accessory_get_device();
-		if (ad != NULL) {
-			printf("\nFound AOA ready device with ID %04x:%04x and AOA version %d connected how ID %04x:%04x\n\n", ad->vendor_id, ad->product_id, ad->aoa_version, ad->aoa_vendor_id, ad->aoa_product_id);
-			break;
-		}
-		usleep(500000);
-	}
-
-	puts("Capture and show data flow coming from Android device... (press CTRL+C to quit)");
-	unsigned char *buffer = malloc(ACCESSORY_BUFFER_SIZE);
-	if (buffer == NULL)
-		return EXIT_FAILURE;
-
-	if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
-		perror("Unable to open serial port");
-		return EXIT_FAILURE;
-	}
-
-	int first_packet = 1;
-	while (1) {
-		int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
-		if (cnt > 0) {
-			print_buffer(buffer, cnt);
-			if (first_packet) {
-				first_packet = 0;
-			} else {
-				uart_send_buffer(buffer, cnt);
+		puts("Looking for accessory device...");
+		while (1) {
+			ad = accessory_get_device();
+			if (ad != NULL) {
+				printf(" - Found Android device with ID=%04x:%04x now connected as ID=%04x:%04x, version %d\n", ad->vendor_id, ad->product_id, ad->aoa_vendor_id, ad->aoa_product_id, ad->aoa_version);
+				break;
 			}
-		} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
-			puts("\nAOA device disconnected !");
-			break;
+			usleep(500000);
 		}
 
-		cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
-		if (cnt > 0) {
-			accessory_send_data(ad, buffer, cnt);
-			print_buffer(buffer, cnt);
+		puts("");
+		puts("Capture and show data flow coming from Android device...");
+		unsigned char *buffer = malloc(ACCESSORY_BUFFER_SIZE);
+		if (buffer == NULL)
+			return EXIT_FAILURE;
+
+		if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
+			perror("Unable to open serial port");
+			return EXIT_FAILURE;
 		}
 
-		usleep(1000);
+		while (1) {
+			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
+			if (cnt > 0) {
+				print_buffer(buffer, cnt, 0);
+				uart_send_buffer(buffer, cnt);
+			} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
+				puts("AOA device disconnected !");
+				break;
+			}
+
+			cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
+			if (cnt > 0) {
+				accessory_send_data(ad, buffer, cnt);
+				print_buffer(buffer, cnt, 1);
+			}
+
+			usleep(1000);
+		}
+		free(buffer);
 	}
 
-	free(buffer);
 
 	accessory_free_device(ad);
 	accessory_finalize();
@@ -91,38 +90,25 @@ int main(void) {
 	return EXIT_SUCCESS;
 }
 
-static void check_uart() {
+#define COLOR_RED		"\e[31m"
+#define COLOR_BLUE		"\e[34m"
+#define COLOR_GREEN 	"\e[32m"
+#define COLOR_RESET 	"\033[0m"
+
+static void print_buffer(unsigned char *buffer, int size, int type) {
 	int i;
-	char buffer[1024];
 
-	char COMMAND_TC[] = { 0xAA, 0x02, 0x54, 0x43, 0x1A };
-
-	if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
-		perror("Unable to open serial port");
-		return;
-	}
-
-	for (i = 0; i < 10; i++) {
-		uart_send_buffer(&COMMAND_TC[0], 5);
-		usleep(200 * 1000);
-		uart_receive_buffer_timout(&buffer[0], 5, 1);
-	}
-
-	uart_close();
-}
-
-static void print_buffer(unsigned char *buffer, int size) {
-	int i;
-	static int cnt = 0;
-
+	if (type == 0)
+		printf(COLOR_BLUE);
+	else
+		printf(COLOR_RED);
 	for (i = 0; i < size; i++) {
-		if (cnt >= 16) {
-			cnt = 0;
-			puts("");
-		}
-		cnt++;
-		printf("%02X ", buffer[i]);
+		if (type == 0)
+			printf("%02X ", buffer[i]);
+		else
+			printf("%02X ", buffer[i]);
 	}
+	printf(COLOR_RESET "\n");
 
 	fflush(stdout);
 }
