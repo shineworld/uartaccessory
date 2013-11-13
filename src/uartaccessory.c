@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include <getopt.h>
 #include <libusb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +35,36 @@
 
 static void print_buffer(unsigned char *buffer, int size, int type);
 
-int main(void) {
+static int option_colors = 0;
+static int option_closed_loop = 0;
+
+int main(int argc, char *argv[]) {
+
+	static struct option long_options[] = {
+			{ "closed-loop", no_argument, 0, 'c' },
+			{ "colors", no_argument, 0, 'j' },
+			{ "help", no_argument, 0, 'h' },
+			{ 0, 0, 0, 0 }
+	};
+
+	int option;
+	int option_index = 0;
+
+	while ((option = getopt_long(argc, argv, "ch", long_options, &option_index)) != -1) {
+		switch (option) {
+		case 'l':
+			option_closed_loop = 1;
+			break;
+		case 'h':
+			puts("Usage: uartaccessory [options]");
+			puts("Options:");
+			puts("  -h, --help               Display this information");
+			puts("  -c, --closed-loop        Enable closed loop mode where accessory TX/RX are logically coupled and ttyUSBx disabled");
+			puts("  -j, --colors             Enable colors to show TX vs RX packets");
+			return EXIT_SUCCESS;
+		}
+	}
+
 	accessory_device *ad = NULL;
 
 	accessory_init();
@@ -57,32 +87,38 @@ int main(void) {
 		if (buffer == NULL)
 			return EXIT_FAILURE;
 
-		if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
-			perror("Unable to open serial port");
-			return EXIT_FAILURE;
+		if (option_closed_loop == 0) {
+			if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
+				perror("Unable to open serial port");
+				return EXIT_FAILURE;
+			}
 		}
 
 		while (1) {
 			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
 			if (cnt > 0) {
 				print_buffer(buffer, cnt, 0);
-				uart_send_buffer(buffer, cnt);
+				if (option_closed_loop == 0)
+					uart_send_buffer(buffer, cnt);
+				else
+					accessory_send_data(ad, buffer, cnt);
 			} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
 				puts("AOA device disconnected !");
 				break;
 			}
 
-			cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
-			if (cnt > 0) {
-				accessory_send_data(ad, buffer, cnt);
-				print_buffer(buffer, cnt, 1);
+			if (option_closed_loop) {
+				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
+				if (cnt > 0) {
+					accessory_send_data(ad, buffer, cnt);
+					print_buffer(buffer, cnt, 1);
+				}
 			}
 
 			usleep(1000);
 		}
 		free(buffer);
 	}
-
 
 	accessory_free_device(ad);
 	accessory_finalize();
@@ -98,17 +134,20 @@ int main(void) {
 static void print_buffer(unsigned char *buffer, int size, int type) {
 	int i;
 
-	if (type == 0)
-		printf(COLOR_BLUE);
-	else
-		printf(COLOR_RED);
+	if (option_colors) {
+		if (type == 0)
+			printf(COLOR_BLUE);
+		else
+			printf(COLOR_RED);
+	}
 	for (i = 0; i < size; i++) {
 		if (type == 0)
 			printf("%02X ", buffer[i]);
 		else
 			printf("%02X ", buffer[i]);
 	}
-	printf(COLOR_RESET "\n");
+	if (option_colors)
+		printf(COLOR_RESET "\n");
 
 	fflush(stdout);
 }
