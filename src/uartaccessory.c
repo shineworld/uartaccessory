@@ -37,10 +37,10 @@ static void print_buffer(unsigned char *buffer, int size, int type);
 int main(void) {
 	accessory_device *ad = NULL;
 
-	puts("");
 	accessory_init();
 
 	while (1) {
+		puts("");
 		puts("Looking for accessory device...");
 		while (1) {
 			ad = accessory_get_device();
