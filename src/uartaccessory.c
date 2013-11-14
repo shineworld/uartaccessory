@@ -1,6 +1,6 @@
 /*
  * The MIT License (MIT)
- * Copyright (c) 2013 Silverio Diquigiovanni
+ * Copyright (c) 2013 Silverio Diquigiovanni <shineworld.software@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,9 +50,9 @@ int main(int argc, char *argv[]) {
 	int option;
 	int option_index = 0;
 
-	while ((option = getopt_long(argc, argv, "ch", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "cjh", long_options, &option_index)) != -1) {
 		switch (option) {
-		case 'l':
+		case 'c':
 			option_closed_loop = 1;
 			break;
 		case 'h':
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 
-			if (option_closed_loop) {
+			if (option_closed_loop == 0) {
 				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
 				if (cnt > 0) {
 					accessory_send_data(ad, buffer, cnt);
