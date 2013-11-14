@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 
 		if (option_closed_loop == 0) {
 			if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
-				perror("Unable to open serial port");
+				perror("Unable to open serial port /dev/ttyUSB0");
 				return EXIT_FAILURE;
 			}
 		}
@@ -126,10 +126,10 @@ int main(int argc, char *argv[]) {
 	return EXIT_SUCCESS;
 }
 
-#define COLOR_RED		"\e[31m"
-#define COLOR_BLUE		"\e[34m"
-#define COLOR_GREEN 	"\e[32m"
-#define COLOR_RESET 	"\033[0m"
+#define COLOR_RED      "\e[31m"
+#define COLOR_BLUE     "\e[34m"
+#define COLOR_GREEN    "\e[32m"
+#define COLOR_RESET    "\033[0m"
 
 static void print_buffer(unsigned char *buffer, int size, int type) {
 	int i;
