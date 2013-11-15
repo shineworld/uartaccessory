@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
 
 	private Button mButtonOpen;
 	private Button mButtonClose;
+	private Button mButtonSend;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +62,7 @@ public class MainActivity extends Activity {
 		// recover view references
 		mButtonOpen = (Button) findViewById(R.id.buttonOpen);
 		mButtonClose = (Button) findViewById(R.id.buttonClose);
+		mButtonSend = (Button) findViewById(R.id.buttonSend);
 
 		// implement button click listener
 		OnClickListener buttonClickListener = new OnClickListener() {
@@ -73,6 +75,9 @@ public class MainActivity extends Activity {
 				if (v == mButtonClose) {
 					close();
 				}
+				if (v == mButtonSend) {
+					send();
+				}
 			}
 
 		};
@@ -80,6 +85,7 @@ public class MainActivity extends Activity {
 		// set click listeners
 		mButtonOpen.setOnClickListener(buttonClickListener);
 		mButtonClose.setOnClickListener(buttonClickListener);
+		mButtonSend.setOnClickListener(buttonClickListener);
 	}
 
 	@Override
@@ -148,6 +154,21 @@ public class MainActivity extends Activity {
 			mPermissionIntent.cancel();
 		}
 		setState(State.CLOSED);
+	}
+	
+	public synchronized void send() {
+		if (mState == State.OPEN) {
+			Log.d(TAG, "sending data...");
+			try {
+				String dummy = "ciao";
+				mOutputStream.write(dummy.getBytes());
+				Log.d(TAG, "data sent");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				Log.d(TAG, "sending data error...");
+				e.printStackTrace();
+			}
+		}
 	}
 
 	private void setState(State state) {

@@ -36,12 +36,14 @@
 static void print_buffer(unsigned char *buffer, int size, int type);
 
 static int option_colors = 0;
+static int option_no_reply = 0;
 static int option_closed_loop = 0;
 
 int main(int argc, char *argv[]) {
 
 	static struct option long_options[] = {
 			{ "closed-loop", no_argument, 0, 'c' },
+			{ "no-reply", no_argument, 0, 'n' },
 			{ "colors", no_argument, 0, 'j' },
 			{ "help", no_argument, 0, 'h' },
 			{ 0, 0, 0, 0 }
@@ -50,16 +52,23 @@ int main(int argc, char *argv[]) {
 	int option;
 	int option_index = 0;
 
-	while ((option = getopt_long(argc, argv, "cjh", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "cnjh", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'c':
 			option_closed_loop = 1;
+			break;
+		case 'n':
+			option_no_reply = 1;
+			break;
+		case 'j':
+			option_colors = 1;
 			break;
 		case 'h':
 			puts("Usage: uartaccessory [options]");
 			puts("Options:");
 			puts("  -h, --help               Display this information");
 			puts("  -c, --closed-loop        Enable closed loop mode where accessory TX/RX are logically coupled and ttyUSBx disabled");
+			puts("  -n, --no-reply           Disable sending of RX data packets (reply to request)");
 			puts("  -j, --colors             Enable colors to show TX vs RX packets");
 			return EXIT_SUCCESS;
 		}
@@ -101,13 +110,16 @@ int main(int argc, char *argv[]) {
 				if (option_closed_loop == 0)
 					uart_send_buffer(buffer, cnt);
 				else
-					accessory_send_data(ad, buffer, cnt);
+					if (option_no_reply == 0) {
+						accessory_send_data(ad, buffer, cnt);
+						print_buffer(buffer, cnt, 1);
+					}
 			} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
 				puts("AOA device disconnected !");
 				break;
 			}
 
-			if (option_closed_loop == 0) {
+			if (option_no_reply == 0 && option_closed_loop == 0) {
 				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
 				if (cnt > 0) {
 					accessory_send_data(ad, buffer, cnt);

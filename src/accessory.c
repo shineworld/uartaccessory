@@ -329,8 +329,9 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 }
 
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
+	const static int TIMEOUT = 10;
 	int transferred;
 
-    libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), buffer, size, &transferred, 0);
+    libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), buffer, size, &transferred, TIMEOUT);
     return;
 }
