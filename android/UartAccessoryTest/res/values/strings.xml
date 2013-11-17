@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">UartAccessoryTest</string>
+    <string name="app_name">Uart Accessory Test</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_world">Hello world!</string>
-
+    <string name="open">Open</string>
+    <string name="close">Close</string>
+    <string name="send">Send</string>
+    <string name="accessory_commands">Accessory Commands</string>
+    <string name="text_to_send">Text to Send</string>
+    <string name="received_text">Received Text</string>
+    <string name="hello_world">Hello World !</string>
+    
 </resources>

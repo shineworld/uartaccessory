@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2013 Silverio Diquigiovanni <shineworld.software@gmail.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package it.shineworld.uartaccessorytest;
 
 import java.io.FileDescriptor;
@@ -14,12 +30,18 @@ import android.content.IntentFilter;
 import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.os.ParcelFileDescriptor;
+import android.text.Layout;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -33,11 +55,11 @@ public class MainActivity extends Activity {
 	private AccessoryReceiver mAccessoryReceiver;
 	private PendingIntent mPermissionIntent;
 	private IntentFilter mAccessoryFilter;
-	
+
 	private ParcelFileDescriptor mFileDescriptor;
 	private FileInputStream mInputStream;
 	private FileOutputStream mOutputStream;
-	
+
 	private UsbManager mUsbManager;
 	private UsbAccessory mUsbAccessory;
 
@@ -46,6 +68,8 @@ public class MainActivity extends Activity {
 	private Button mButtonOpen;
 	private Button mButtonClose;
 	private Button mButtonSend;
+	private EditText mEditTextToSend;
+	private TextView mTextReceivedText;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +87,8 @@ public class MainActivity extends Activity {
 		mButtonOpen = (Button) findViewById(R.id.buttonOpen);
 		mButtonClose = (Button) findViewById(R.id.buttonClose);
 		mButtonSend = (Button) findViewById(R.id.buttonSend);
+		mEditTextToSend = (EditText) findViewById(R.id.editTextToSend);
+		mTextReceivedText = (TextView) findViewById(R.id.textReceivedText);
 
 		// implement button click listener
 		OnClickListener buttonClickListener = new OnClickListener() {
@@ -86,6 +112,9 @@ public class MainActivity extends Activity {
 		mButtonOpen.setOnClickListener(buttonClickListener);
 		mButtonClose.setOnClickListener(buttonClickListener);
 		mButtonSend.setOnClickListener(buttonClickListener);
+
+		// set movement method for received text
+		mTextReceivedText.setMovementMethod(new ScrollingMovementMethod());
 	}
 
 	@Override
@@ -155,21 +184,6 @@ public class MainActivity extends Activity {
 		}
 		setState(State.CLOSED);
 	}
-	
-	public synchronized void send() {
-		if (mState == State.OPEN) {
-			Log.d(TAG, "sending data...");
-			try {
-				String dummy = "ciao";
-				mOutputStream.write(dummy.getBytes());
-				Log.d(TAG, "data sent");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				Log.d(TAG, "sending data error...");
-				e.printStackTrace();
-			}
-		}
-	}
 
 	private void setState(State state) {
 		mState = state;
@@ -183,6 +197,7 @@ public class MainActivity extends Activity {
 				FileDescriptor fd = mFileDescriptor.getFileDescriptor();
 				mInputStream = new FileInputStream(fd);
 				mOutputStream = new FileOutputStream(fd);
+				accessoryReadThread.start();
 				setState(State.OPEN);
 			} else {
 				throw new IOException("Failed to open file descriptor");
@@ -192,7 +207,7 @@ public class MainActivity extends Activity {
 			Log.e(TAG, "Failed to open streams", e);
 			setState(State.CLOSED);
 		}
-		
+
 	}
 
 	private void closeStreams() {
@@ -203,7 +218,70 @@ public class MainActivity extends Activity {
 			Toast.makeText(this, "Failed to properly close accessory", Toast.LENGTH_LONG).show();
 			Log.e(TAG, "Failed to properly close accessory", e);
 		}
-		
+	}
+
+	public synchronized void send() {
+		if (mState == State.OPEN) {
+			Log.d(TAG, "sending data...");
+			try {
+				if (!mEditTextToSend.getText().toString().equals(""))
+					mOutputStream.write(mEditTextToSend.getText().toString().getBytes());
+				Log.d(TAG, "data sent");
+			} catch (IOException e) {
+				Log.d(TAG, "sending data error...");
+				e.printStackTrace();
+			}
+		}
+	}
+
+	Thread accessoryReadThread = new Thread() {
+		@Override
+		public void run() {
+			byte[] buffer = new byte[16384];
+
+			while (true) {
+				try {
+					int ret = mInputStream.read(buffer);
+					if (ret < 0)
+						break;
+					if (ret > 0) {
+						Message m = Message.obtain(mHandler, MESSAGE_READ_DATA);
+						m.obj = new String(buffer, 0, ret);
+						mHandler.sendMessage(m);
+					}
+				} catch (IOException e) {
+					break;
+				}
+			}
+
+		}
+	};
+
+	private static final int MESSAGE_READ_DATA = 1;
+
+	Handler mHandler = new Handler() {
+
+		@Override
+		public void handleMessage(Message msg) {
+			switch (msg.what) {
+				case MESSAGE_READ_DATA:
+					appendTextAndScroll((String) msg.obj);
+					break;
+			}
+		}
+
+	};
+
+	private void appendTextAndScroll(String text) {
+		if (mTextReceivedText != null) {
+			mTextReceivedText.append(text);
+			final Layout layout = mTextReceivedText.getLayout();
+			if (layout != null) {
+				int scrollDelta = layout.getLineBottom(mTextReceivedText.getLineCount() - 1) - mTextReceivedText.getScrollY() - mTextReceivedText.getHeight();
+				if (scrollDelta > 0)
+					mTextReceivedText.scrollBy(0, scrollDelta);
+			}
+		}
 	}
 
 }

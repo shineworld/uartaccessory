@@ -18,15 +18,13 @@
         <activity
             android:name="it.shineworld.uartaccessorytest.MainActivity"
             android:label="@string/app_name"
+            android:screenOrientation="reversePortrait"
             android:launchMode="singleTask" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!--
-              -		disabled to try permission request mode
-              -
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" />
             </intent-filter>
@@ -34,7 +32,6 @@
             <meta-data
                 android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED"
                 android:resource="@xml/accessory_filter" />
-            -->
         </activity>
     </application>
 
