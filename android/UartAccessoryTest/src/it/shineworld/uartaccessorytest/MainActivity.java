@@ -119,7 +119,6 @@ public class MainActivity extends Activity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
 	}
@@ -207,7 +206,6 @@ public class MainActivity extends Activity {
 			Log.e(TAG, "Failed to open streams", e);
 			setState(State.CLOSED);
 		}
-
 	}
 
 	private void closeStreams() {
@@ -222,23 +220,29 @@ public class MainActivity extends Activity {
 
 	public synchronized void send() {
 		if (mState == State.OPEN) {
-			Log.d(TAG, "sending data...");
+			Log.d(TAG, "sending data start");
 			try {
 				if (!mEditTextToSend.getText().toString().equals(""))
 					mOutputStream.write(mEditTextToSend.getText().toString().getBytes());
-				Log.d(TAG, "data sent");
+				Log.d(TAG, "sending data OK");
 			} catch (IOException e) {
-				Log.d(TAG, "sending data error...");
+				Log.d(TAG, "sending data exception");
 				e.printStackTrace();
 			}
 		}
 	}
 
+	private static final int ACCESSORY_MODE_BUFFER_SIZE = 16384;
+	private static final int USB_HIGH_SPEED_BUFFER_SIZE = 512;
+	private static final int USB_FULL_SPEED_BUFFER_SIZE = 64;
+
 	Thread accessoryReadThread = new Thread() {
+
 		@Override
 		public void run() {
-			byte[] buffer = new byte[16384];
+			byte[] buffer = new byte[ACCESSORY_MODE_BUFFER_SIZE];
 
+			Log.d(TAG, "accessory read thread start");
 			while (true) {
 				try {
 					int ret = mInputStream.read(buffer);
@@ -250,36 +254,38 @@ public class MainActivity extends Activity {
 						mHandler.sendMessage(m);
 					}
 				} catch (IOException e) {
+					Log.d(TAG, "accessory read thread exception");
 					break;
 				}
 			}
-
+			Log.d(TAG, "accessory read thread stop");
 		}
+
 	};
 
 	private static final int MESSAGE_READ_DATA = 1;
 
-	Handler mHandler = new Handler() {
+	private final Handler mHandler = new Handler() {
 
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 				case MESSAGE_READ_DATA:
-					appendTextAndScroll((String) msg.obj);
+					appendTextAndScroll(mTextReceivedText, (String) msg.obj);
 					break;
 			}
 		}
 
 	};
 
-	private void appendTextAndScroll(String text) {
-		if (mTextReceivedText != null) {
-			mTextReceivedText.append(text);
-			final Layout layout = mTextReceivedText.getLayout();
+	private void appendTextAndScroll(TextView view, String text) {
+		if (view != null) {
+			view.append(text);
+			final Layout layout = view.getLayout();
 			if (layout != null) {
-				int scrollDelta = layout.getLineBottom(mTextReceivedText.getLineCount() - 1) - mTextReceivedText.getScrollY() - mTextReceivedText.getHeight();
+				int scrollDelta = layout.getLineBottom(view.getLineCount() - 1) - view.getScrollY() - view.getHeight();
 				if (scrollDelta > 0)
-					mTextReceivedText.scrollBy(0, scrollDelta);
+					view.scrollBy(0, scrollDelta);
 			}
 		}
 	}

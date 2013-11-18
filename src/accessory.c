@@ -310,7 +310,7 @@ static int accessory_setup(accessory_device *ad) {
 }
 
 int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
-	const static int PACKET_BULK_LEN = 64;
+	const static int PACKET_BULK_LEN = 512;
 	unsigned char answer[PACKET_BULK_LEN];
 	const static int TIMEOUT = 10;
 	int transferred;

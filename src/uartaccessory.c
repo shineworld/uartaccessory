@@ -31,7 +31,7 @@
 #include "accessory.h"
 #include "uart.h"
 
-#define ACCESSORY_BUFFER_SIZE 1024
+#define ACCESSORY_MODE_BUFFER_SIZE 16384
 
 static void print_buffer(unsigned char *buffer, int size, int type);
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
 		puts("");
 		puts("Capture and show data flow coming from Android device...");
-		unsigned char *buffer = malloc(ACCESSORY_BUFFER_SIZE);
+		unsigned char *buffer = malloc(ACCESSORY_MODE_BUFFER_SIZE);
 		if (buffer == NULL)
 			return EXIT_FAILURE;
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		while (1) {
-			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_BUFFER_SIZE - 1);
+			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_MODE_BUFFER_SIZE - 1);
 			if (cnt > 0) {
 				print_buffer(buffer, cnt, 0);
 				if (option_closed_loop == 0)
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (option_no_reply == 0 && option_closed_loop == 0) {
-				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_BUFFER_SIZE, 1);
+				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_MODE_BUFFER_SIZE, 1);
 				if (cnt > 0) {
 					accessory_send_data(ad, buffer, cnt);
 					print_buffer(buffer, cnt, 1);

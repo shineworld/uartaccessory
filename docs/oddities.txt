@@ -1,0 +1,7 @@
+- If in the accessory.c accessory_receive_data() the funciton libusb_bulk_transfer() is called with a 64 byte buffer and
+  in UartAccessoryText app I try to send more than 63 bytes none data is received by uartaccessory program. Looking with
+  Wireshark seem system enter in a loop. I thought that using a little buffer the libusb_bulk_transfer require more calls
+  but this isn't unfortunately.
+  
+  - I need to know actual transmission buffer and then send always packages < of this size ?
+  - Can I assume a default of 64 bytes so it works for any type of USB connection ?
