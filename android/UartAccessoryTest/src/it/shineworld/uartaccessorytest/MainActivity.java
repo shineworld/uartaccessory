@@ -69,7 +69,10 @@ public class MainActivity extends Activity {
 	private Button mButtonClose;
 	private Button mButtonSend;
 	private EditText mEditTextToSend;
+	private TextView mTextElapsedTime;
 	private TextView mTextReceivedText;
+
+	private long mElapsedTime;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +91,7 @@ public class MainActivity extends Activity {
 		mButtonClose = (Button) findViewById(R.id.buttonClose);
 		mButtonSend = (Button) findViewById(R.id.buttonSend);
 		mEditTextToSend = (EditText) findViewById(R.id.editTextToSend);
+		mTextElapsedTime = (TextView) findViewById(R.id.textElapsedTime);
 		mTextReceivedText = (TextView) findViewById(R.id.textReceivedText);
 
 		// implement button click listener
@@ -102,6 +106,7 @@ public class MainActivity extends Activity {
 					close();
 				}
 				if (v == mButtonSend) {
+					mElapsedTime = System.nanoTime();
 					send();
 				}
 			}
@@ -233,8 +238,6 @@ public class MainActivity extends Activity {
 	}
 
 	private static final int ACCESSORY_MODE_BUFFER_SIZE = 16384;
-	private static final int USB_HIGH_SPEED_BUFFER_SIZE = 512;
-	private static final int USB_FULL_SPEED_BUFFER_SIZE = 64;
 
 	Thread accessoryReadThread = new Thread() {
 
@@ -271,7 +274,9 @@ public class MainActivity extends Activity {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 				case MESSAGE_READ_DATA:
+					mElapsedTime = System.nanoTime() - mElapsedTime;
 					appendTextAndScroll(mTextReceivedText, (String) msg.obj);
+					mTextElapsedTime.setText(String.format("%s = %.3f mS", getResources().getString(R.string.elapsed_time), (double) mElapsedTime / 1000000)); 
 					break;
 			}
 		}

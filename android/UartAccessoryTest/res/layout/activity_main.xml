@@ -37,7 +37,15 @@
             android:id="@+id/buttonSend"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
             android:text="@string/send" />
+
+        <TextView
+            android:id="@+id/textElapsedTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:text="@string/elapsed_time" />
 
     </LinearLayout>
 
@@ -78,8 +86,11 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="10dp"
+            android:background="@drawable/borders"
             android:maxLines="10000"
+            android:padding="5dp"
             android:scrollbars="vertical" />
+
     </FrameLayout>
 
 </LinearLayout>
