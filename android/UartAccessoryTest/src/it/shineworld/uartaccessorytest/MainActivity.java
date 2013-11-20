@@ -288,7 +288,8 @@ public class MainActivity extends Activity {
 			view.append(text);
 			final Layout layout = view.getLayout();
 			if (layout != null) {
-				int scrollDelta = layout.getLineBottom(view.getLineCount() - 1) - view.getScrollY() - view.getHeight();
+				int padding = view.getPaddingTop() + view.getPaddingBottom();
+				int scrollDelta = layout.getLineBottom(view.getLineCount() - 1) - view.getScrollY() - (view.getHeight() - padding);
 				if (scrollDelta > 0)
 					view.scrollBy(0, scrollDelta);
 			}
