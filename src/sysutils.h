@@ -24,7 +24,6 @@
 #ifndef SYSUTILS_H_
 #define SYSUTILS_H_
 
-int getkey();
-int kbhit();
+int getasynckey();
 
 #endif /* SYSUTILS_H_ */

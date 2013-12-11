@@ -47,6 +47,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 	private static final String ACTION_USB_PERMISSION = "it.shineworld.uartaccessorytest.USB_PERMISSION";
 	private static final String TAG = "shineworld";
+	private final int REFRESH_RATE = 500;
 
 	private enum State {
 		CLOSED, WAIT_PERMISSION, OPEN
@@ -71,6 +72,7 @@ public class MainActivity extends Activity {
 	private EditText mEditTextToSend;
 	private TextView mTextElapsedTime;
 	private TextView mTextReceivedText;
+	private TextView mTextAccessoryState;
 
 	private long mElapsedTime;
 
@@ -93,6 +95,7 @@ public class MainActivity extends Activity {
 		mEditTextToSend = (EditText) findViewById(R.id.editTextToSend);
 		mTextElapsedTime = (TextView) findViewById(R.id.textElapsedTime);
 		mTextReceivedText = (TextView) findViewById(R.id.textReceivedText);
+		mTextAccessoryState = (TextView) findViewById(R.id.textAccessoryState);
 
 		// implement button click listener
 		OnClickListener buttonClickListener = new OnClickListener() {
@@ -120,6 +123,24 @@ public class MainActivity extends Activity {
 
 		// set movement method for received text
 		mTextReceivedText.setMovementMethod(new ScrollingMovementMethod());
+		
+		// start timed hander to check accessory state
+		Handler handler = new Handler();
+		handler.postDelayed(new Runnable() {
+
+			@Override
+			public void run() {
+				UsbAccessory[] mUsbAccessories = mUsbManager.getAccessoryList();
+				mUsbAccessory = (mUsbAccessories == null ? null : mUsbAccessories[0]);
+				if (mUsbAccessory != null) {
+					mTextAccessoryState.setText(R.string.accessory_on);
+				} else {
+					mTextAccessoryState.setText(R.string.accessory_off);
+				}
+				mHandler.postDelayed(this, REFRESH_RATE);
+			}
+			
+		}, REFRESH_RATE);
 	}
 
 	@Override
@@ -252,6 +273,8 @@ public class MainActivity extends Activity {
 					if (ret < 0)
 						break;
 					if (ret > 0) {
+						if (buffer.toString().equals("quit"))
+							break;
 						Message m = Message.obtain(mHandler, MESSAGE_READ_DATA);
 						m.obj = new String(buffer, 0, ret);
 						mHandler.sendMessage(m);

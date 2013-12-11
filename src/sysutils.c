@@ -26,50 +26,30 @@
 #include <string.h>
 #include <termios.h>
 
-int getkey() {
-	int character;
-	struct termios old_term_attr;
-	struct termios new_term_attr;
+/**
+ * get asynchronous key value (not blocking) without put pressed char in stdio
+ */
+int getasynckey() {
+	struct termios old_termios;
+	struct termios new_termios;
 
-	// set the terminal to raw mode
-	tcgetattr(fileno(stdin), &old_term_attr);
-	memcpy(&new_term_attr, &old_term_attr, sizeof(struct termios));
-	new_term_attr.c_lflag &= ~(ECHO | ICANON);
-	new_term_attr.c_cc[VTIME] = 0;
-	new_term_attr.c_cc[VMIN] = 0;
-	tcsetattr(fileno(stdin), TCSANOW, &new_term_attr);
-
-	// read a character from the stdin stream without blocking
-	// returns EOF (-1) if no character is available
-	character = fgetc(stdin);
-
-	// restore the original terminal attributes
-	tcsetattr(fileno(stdin), TCSANOW, &old_term_attr);
-
-	return character;
-}
-
-int kbhit(void) {
-	struct termios oldt, newt;
 	int ch;
-	int oldf;
+	int old_fcntl;
 
-	tcgetattr(0, &oldt);
-	newt = oldt;
-	newt.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(0, TCSANOW, &newt);
-	oldf = fcntl(0, F_GETFL, 0);
-	fcntl(0, F_SETFL, oldf | O_NONBLOCK);
+	tcgetattr(fileno(stdin), &old_termios);
+	new_termios = old_termios;
+	new_termios.c_lflag &= ~(ICANON | ECHO);
+	new_termios.c_cc[VTIME] = 0;
+	new_termios.c_cc[VMIN] = 0;
+	tcsetattr(fileno(stdin), TCSANOW, &new_termios);
+
+	old_fcntl = fcntl(0, F_GETFL, 0);
+	fcntl(0, F_SETFL, old_fcntl | O_NONBLOCK);
 
 	ch = getchar();
 
-	tcsetattr(0, TCSANOW, &oldt);
-	fcntl(0, F_SETFL, oldf);
+	tcsetattr(fileno(stdin), TCSANOW, &old_termios);
+	fcntl(0, F_SETFL, old_fcntl);
 
-	if (ch != EOF) {
-		ungetc(ch, stdin);
-		return 1;
-	}
-
-	return 0;
+	return ch;
 }

@@ -15,6 +15,8 @@
     <string name="text_to_send">Text to Send</string>
     <string name="received_text">Received Text</string>
     
+    <string name="accessory_on">Accessory ON</string>
+    <string name="accessory_off">Accessory OFF</string>
+
     <string name="hello_world">Hello World !</string>
-    
 </resources>

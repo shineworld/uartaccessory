@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include "accessory.h"
+#include "sysutils.h"
 #include "uart.h"
 
 #define ACCESSORY_MODE_BUFFER_SIZE 16384
@@ -78,10 +79,18 @@ int main(int argc, char *argv[]) {
 
 	accessory_init();
 
-	while (1) {
+	int need_quit = 0;
+
+	while (need_quit == 0) {
 		puts("");
-		puts("Looking for accessory device...");
+		puts("Looking for accessory device... Press Q to quit");
 		while (1) {
+			int key = getasynckey();
+			if (key == 'Q' || key == 'q') {
+				need_quit = 1;
+				break;
+			}
+
 			ad = accessory_get_device();
 			if (ad != NULL) {
 				printf(" - Found Android device with ID=%04x:%04x now connected as ID=%04x:%04x, version %d\n", ad->vendor_id, ad->product_id, ad->aoa_vendor_id, ad->aoa_product_id, ad->aoa_version);
@@ -89,9 +98,12 @@ int main(int argc, char *argv[]) {
 			}
 			usleep(500000);
 		}
+		if (need_quit != 0)
+			break;
 
 		puts("");
-		puts("Capture and show data flow coming from Android device...");
+		puts("Capture and show data flow coming from Android device... Press Q to quit");
+
 		unsigned char *buffer = malloc(ACCESSORY_MODE_BUFFER_SIZE);
 		if (buffer == NULL)
 			return EXIT_FAILURE;
@@ -104,6 +116,12 @@ int main(int argc, char *argv[]) {
 		}
 
 		while (1) {
+			int key = getasynckey();
+			if (key == 'Q' || key == 'q') {
+				need_quit = 1;
+				break;
+			}
+
 			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_MODE_BUFFER_SIZE - 1);
 			if (cnt > 0) {
 				print_buffer(buffer, cnt, 0);
