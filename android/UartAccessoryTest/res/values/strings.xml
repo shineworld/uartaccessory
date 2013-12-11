@@ -17,6 +17,10 @@
     
     <string name="accessory_on">Accessory ON</string>
     <string name="accessory_off">Accessory OFF</string>
-
+    
+    <string name="state_closed">State CLOSED</string>
+    <string name="state_wait_permission">State WAIT PERMSISSION</string>
+    <string name="state_open">State OPEN</string>
+    
     <string name="hello_world">Hello World !</string>
 </resources>

@@ -69,6 +69,7 @@ public class MainActivity extends Activity {
 	private Button mButtonOpen;
 	private Button mButtonClose;
 	private Button mButtonSend;
+	private TextView mTextState;
 	private EditText mEditTextToSend;
 	private TextView mTextElapsedTime;
 	private TextView mTextReceivedText;
@@ -92,6 +93,7 @@ public class MainActivity extends Activity {
 		mButtonOpen = (Button) findViewById(R.id.buttonOpen);
 		mButtonClose = (Button) findViewById(R.id.buttonClose);
 		mButtonSend = (Button) findViewById(R.id.buttonSend);
+		mTextState = (TextView) findViewById(R.id.textState);
 		mEditTextToSend = (EditText) findViewById(R.id.editTextToSend);
 		mTextElapsedTime = (TextView) findViewById(R.id.textElapsedTime);
 		mTextReceivedText = (TextView) findViewById(R.id.textReceivedText);
@@ -136,6 +138,17 @@ public class MainActivity extends Activity {
 					mTextAccessoryState.setText(R.string.accessory_on);
 				} else {
 					mTextAccessoryState.setText(R.string.accessory_off);
+				}
+				switch (mState) {
+					case CLOSED:
+						mTextState.setText(R.string.state_closed);
+						break;
+					case WAIT_PERMISSION:
+						mTextState.setText(R.string.state_wait_permission);
+						break;
+					case OPEN:
+						mTextState.setText(R.string.state_open);
+						break;
 				}
 				mHandler.postDelayed(this, REFRESH_RATE);
 			}
@@ -237,6 +250,14 @@ public class MainActivity extends Activity {
 	private void closeStreams() {
 		Toast.makeText(this, "close streams", Toast.LENGTH_LONG).show();
 		try {
+			// NOW the bad thing, YOU CAN'T close the accessory streams just calling stream.close() because the input
+			// stream mInputStream is blocking and blocked in a read(...) operation. So we need to ask "gracefully" to
+			// accessory to back a request to accessoryReadThread to finish sending a special command.
+			//
+			// What we have hope to do to finsh accessory connection:
+			//		mFileDescriptor.close();
+			// What we need to do to finish accessory connection:
+			//		... code which follow ...
 			mFileDescriptor.close();
 		} catch (IOException e) {
 			Toast.makeText(this, "Failed to properly close accessory", Toast.LENGTH_LONG).show();
