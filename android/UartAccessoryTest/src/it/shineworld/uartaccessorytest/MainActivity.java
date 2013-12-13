@@ -269,8 +269,10 @@ public class MainActivity extends Activity {
 		if (mState == State.OPEN) {
 			Log.d(TAG, "sending data start");
 			try {
-				if (!mEditTextToSend.getText().toString().equals(""))
+				if (!mEditTextToSend.getText().toString().equals("")) {
+					mTextReceivedText.setText("");
 					mOutputStream.write(mEditTextToSend.getText().toString().getBytes());
+				}
 				Log.d(TAG, "sending data OK");
 			} catch (IOException e) {
 				Log.d(TAG, "sending data exception");
@@ -294,6 +296,7 @@ public class MainActivity extends Activity {
 					if (ret < 0)
 						break;
 					if (ret > 0) {
+						Log.d(TAG, "accessory read read " + String.valueOf(ret) + " chars");
 						if (buffer.toString().equals("quit"))
 							break;
 						Message m = Message.obtain(mHandler, MESSAGE_READ_DATA);

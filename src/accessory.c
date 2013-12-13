@@ -24,6 +24,7 @@
 #include "accessory.h"
 
 #include <libusb.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -309,29 +310,50 @@ static int accessory_setup(accessory_device *ad) {
 	return 0;
 }
 
+/**
+ * THERE IS AN ISSUE in libusb_bulk_transfer, or at least I thought there is. If you get the return value LIBUSB_ERROR_TIMEOUT
+ * you should find in transfered the amount of received data before the TIMEOUT, but if you get the same size of required "size"
+ * this mean "you haven't got any real data", so you have to discard it.
+ */
 int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
-	const static int PACKET_BULK_LEN = 512;
-	unsigned char answer[PACKET_BULK_LEN];
 	const static int TIMEOUT = 10;
-	int transferred;
+	int transferred = 0;
 
-	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, answer, PACKET_BULK_LEN - 1, &transferred, TIMEOUT);
-	if (r < 0)
-		if (r != -7)
-			return r;
-		else
-			return 0;
-	else {
-		if (transferred > 0)
-			memcpy(buffer, &answer, transferred);
-	}
+	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, buffer, buffer_size, &transferred, TIMEOUT);
+	if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
+		return r;
+	// to fix upon described issue
+	if (r == LIBUSB_ERROR_TIMEOUT && transferred == buffer_size)
+		return r;
+	if (transferred > 0)
+		printf("\n[received %d %d] ", r, transferred);
 	return transferred;
 }
 
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
-	const static int TIMEOUT = 10;
-	int transferred;
+	const static int PACKET_BULK_LEN = 64;
+	const static int TIMEOUT = 2000;
+	const static int MAX_TRIES = 5;
+	int transferred = 0;
+	int to_send = 0;
+	int tries = 0;
+	int sent = 0;
 
-    libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), buffer, size, &transferred, TIMEOUT);
-    return;
+	while (sent < size) {
+		to_send = size - sent;
+		if (to_send > PACKET_BULK_LEN)
+			to_send = PACKET_BULK_LEN;
+		int r = libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), &buffer[sent], to_send, &transferred, TIMEOUT);
+		if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
+			break;
+		if (transferred > 0) {
+			sent += transferred;
+			tries = 0;
+			continue;
+		}
+		if (++tries >= MAX_TRIES)
+			break;
+	}
+
+	return;
 }

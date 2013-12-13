@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 
-			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_MODE_BUFFER_SIZE - 1);
+			int cnt = accessory_receive_data(ad, buffer, ACCESSORY_MODE_BUFFER_SIZE);
 			if (cnt > 0) {
 				print_buffer(buffer, cnt, 0);
 				if (option_closed_loop == 0)
