@@ -35,20 +35,53 @@
 
 #define ACCESSORY_MODE_BUFFER_SIZE 16384
 
+#define ARRAY_LEN(x)    ( sizeof( x ) / sizeof( x[ 0 ]))
+
 static void print_buffer(unsigned char *buffer, int size, int type);
 
+static int option_quiet = 0;
 static int option_colors = 0;
 static int option_no_reply = 0;
 static int option_closed_loop = 0;
+static const char *option_baud = "115200";
 static const char *option_port = "/dev/ttyUSB0";
+
+typedef struct
+{
+	speed_t speed;
+	unsigned baud_rate;
+} baud_info;
+
+baud_info baud_table[] = {
+		{ B50, 50 },
+		{ B75, 75 },
+		{ B110, 110 },
+		{ B134, 134 },
+		{ B150, 150 },
+		{ B200, 200 },
+		{ B300, 300 },
+		{ B600, 600 },
+		{ B1200, 1200 },
+		{ B1800, 1800 },
+		{ B2400, 2400 },
+		{ B4800, 4800 },
+		{ B9600, 9600 },
+		{ B19200, 19200 },
+		{ B38400, 38400 },
+		{ B57600, 57600 },
+		{ B115200, 115200 },
+		{ B230400, 230400 }
+};
 
 int main(int argc, char *argv[]) {
 
 	static struct option long_options[] = {
 			{ "uart-port", required_argument, 0, 'p' },
+			{ "baud-rate", required_argument, 0, 'b' },
 			{ "closed-loop", no_argument, 0, 'c' },
 			{ "no-reply", no_argument, 0, 'n' },
 			{ "colors", no_argument, 0, 'j' },
+			{ "quiet", no_argument, 0, 'q' },
 			{ "help", no_argument, 0, 'h' },
 			{ 0, 0, 0, 0 }
 	};
@@ -56,13 +89,18 @@ int main(int argc, char *argv[]) {
 	int option;
 	int option_index = 0;
 
-	while ((option = getopt_long(argc, argv, "p:cnjh", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "p:b:cnjqh", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 0:
 			break;
 		case 'p':
 			if (optarg) {
 				option_port = optarg;
+			}
+			break;
+		case 'b':
+			if (optarg) {
+				option_baud = optarg;
 			}
 			break;
 		case 'c':
@@ -74,14 +112,19 @@ int main(int argc, char *argv[]) {
 		case 'j':
 			option_colors = 1;
 			break;
+		case 'q':
+			option_quiet = 1;
+			break;
 		case 'h':
 			puts("Usage: uartaccessory [options]");
 			puts("Options:");
 			puts("  -h, --help               Display this information");
 			puts("  -p, --uart-port          Set the uart port. Example: use -p /dev/ttyUSB3 or simply port number -p 3. Default is /dev/ttyUSB0");
+			puts("  -b, --baud-rate          Set the baud rate. Example: use -b 57600. Standard values are permitted. Default is 115200");
 			puts("  -c, --closed-loop        Enable closed loop mode where accessory TX/RX are logically coupled and ttyUSBx disabled");
 			puts("  -n, --no-reply           Disable sending of RX data packets (reply to request)");
 			puts("  -j, --colors             Enable colors to show TX vs RX packets");
+			puts("  -q, --quiet              Quiet mode");
 			return EXIT_SUCCESS;
 		}
 	}
@@ -120,6 +163,7 @@ int main(int argc, char *argv[]) {
 			return EXIT_FAILURE;
 
 		if (option_closed_loop == 0) {
+
 			char device_name[256];
 			if (option_port[0] == '/')
 				strcpy(device_name, option_port);
@@ -127,7 +171,22 @@ int main(int argc, char *argv[]) {
 				strcpy(device_name, "/dev/ttyUSB");
 				strcpy(&device_name[11], option_port);
 			}
-			if (uart_open(device_name, B115200, 0) < 0) {
+
+			int i;
+			speed_t baud_rate = B0;
+			int requested_baud = atoi(option_baud);
+			for (i = 0; i < ARRAY_LEN(baud_table); i++) {
+				if (baud_table[i].baud_rate == requested_baud) {
+					baud_rate = baud_table[i].speed;
+					break;
+				}
+			}
+			if (baud_rate == B0) {
+				fprintf(stderr, "Unrecognized baud rate: '%s'\n", option_baud);
+				exit(1);
+			}
+
+			if (uart_open(device_name, baud_rate, 0) < 0) {
 				char message[256];
 				snprintf(message, sizeof message, "Unable to open serial port %s", device_name);
 				perror(message);
@@ -184,6 +243,9 @@ int main(int argc, char *argv[]) {
 
 static void print_buffer(unsigned char *buffer, int size, int type) {
 	int i;
+
+	if (option_quiet)
+		return;
 
 	if (option_colors) {
 		if (type == 0)
