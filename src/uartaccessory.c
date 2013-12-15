@@ -25,6 +25,7 @@
 #include <libusb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -39,10 +40,12 @@ static void print_buffer(unsigned char *buffer, int size, int type);
 static int option_colors = 0;
 static int option_no_reply = 0;
 static int option_closed_loop = 0;
+static const char *option_port = "/dev/ttyUSB0";
 
 int main(int argc, char *argv[]) {
 
 	static struct option long_options[] = {
+			{ "uart-port", required_argument, 0, 'p' },
 			{ "closed-loop", no_argument, 0, 'c' },
 			{ "no-reply", no_argument, 0, 'n' },
 			{ "colors", no_argument, 0, 'j' },
@@ -53,8 +56,15 @@ int main(int argc, char *argv[]) {
 	int option;
 	int option_index = 0;
 
-	while ((option = getopt_long(argc, argv, "cnjh", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "p:cnjh", long_options, &option_index)) != -1) {
 		switch (option) {
+		case 0:
+			break;
+		case 'p':
+			if (optarg) {
+				option_port = optarg;
+			}
+			break;
 		case 'c':
 			option_closed_loop = 1;
 			break;
@@ -68,6 +78,7 @@ int main(int argc, char *argv[]) {
 			puts("Usage: uartaccessory [options]");
 			puts("Options:");
 			puts("  -h, --help               Display this information");
+			puts("  -p, --uart-port          Set the uart port. Example: use -p /dev/ttyUSB3 or simply port number -p 3. Default is /dev/ttyUSB0");
 			puts("  -c, --closed-loop        Enable closed loop mode where accessory TX/RX are logically coupled and ttyUSBx disabled");
 			puts("  -n, --no-reply           Disable sending of RX data packets (reply to request)");
 			puts("  -j, --colors             Enable colors to show TX vs RX packets");
@@ -109,8 +120,17 @@ int main(int argc, char *argv[]) {
 			return EXIT_FAILURE;
 
 		if (option_closed_loop == 0) {
-			if (uart_open("/dev/ttyUSB0", B115200, 0) < 0) {
-				perror("Unable to open serial port /dev/ttyUSB0");
+			char device_name[256];
+			if (option_port[0] == '/')
+				strcpy(device_name, option_port);
+			else {
+				strcpy(device_name, "/dev/ttyUSB");
+				strcpy(&device_name[11], option_port);
+			}
+			if (uart_open(device_name, B115200, 0) < 0) {
+				char message[256];
+				snprintf(message, sizeof message, "Unable to open serial port %s", device_name);
+				perror(message);
 				return EXIT_FAILURE;
 			}
 		}
@@ -128,10 +148,10 @@ int main(int argc, char *argv[]) {
 				if (option_closed_loop == 0)
 					uart_send_buffer(buffer, cnt);
 				else
-					if (option_no_reply == 0) {
-						accessory_send_data(ad, buffer, cnt);
-						print_buffer(buffer, cnt, 1);
-					}
+				if (option_no_reply == 0) {
+					accessory_send_data(ad, buffer, cnt);
+					print_buffer(buffer, cnt, 1);
+				}
 			} else if (cnt == LIBUSB_ERROR_NO_DEVICE) {
 				puts("AOA device disconnected !");
 				break;
