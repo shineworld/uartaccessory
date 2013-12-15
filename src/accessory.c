@@ -322,18 +322,16 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, buffer, buffer_size, &transferred, TIMEOUT);
 	if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
 		return r;
-	// to fix upon described issue
+	// fix upon described issue
 	if (r == LIBUSB_ERROR_TIMEOUT && transferred == buffer_size)
 		return r;
-	if (transferred > 0)
-		printf("\n[received %d %d] ", r, transferred);
 	return transferred;
 }
 
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
-	const static int PACKET_BULK_LEN = 64;
-	const static int TIMEOUT = 2000;
+	const static int PACKET_BULK_LEN = 512;
 	const static int MAX_TRIES = 5;
+	const static int TIMEOUT = 2000;
 	int transferred = 0;
 	int to_send = 0;
 	int tries = 0;
