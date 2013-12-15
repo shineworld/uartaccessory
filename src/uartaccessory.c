@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
 
 	accessory_free_device(ad);
 	accessory_finalize();
+	uart_close();
 
 	return EXIT_SUCCESS;
 }

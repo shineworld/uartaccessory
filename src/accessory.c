@@ -316,7 +316,7 @@ static int accessory_setup(accessory_device *ad) {
  * this mean "you haven't got any real data", so you have to discard it.
  */
 int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buffer_size) {
-	const static int TIMEOUT = 10;
+	const static int TIMEOUT = 2;
 	int transferred = 0;
 
 	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, buffer, buffer_size, &transferred, TIMEOUT);
@@ -331,7 +331,7 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
 	const static int PACKET_BULK_LEN = 512;
 	const static int MAX_TRIES = 5;
-	const static int TIMEOUT = 2000;
+	const static int TIMEOUT = 2;
 	int transferred = 0;
 	int to_send = 0;
 	int tries = 0;
