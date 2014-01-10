@@ -15,6 +15,7 @@ FAQ
 - To build on console use: gcc -g -o accessory $(pkg-config --cflags libusb-1.0) *.c $(pkg-config --libs libusb-1.0)
   
   That compiles and links everything in one go, only one -g is needed, and pkg-config is used to get the correct compiler and linker flags for finding libusb files.<br>
+
   To debug it use: dbg ./accessory<br>
   To run it use: run [options]<br>
   To catch stack after a segfault use: "fb"<br>
