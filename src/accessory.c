@@ -113,8 +113,8 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 			}
 		}
 
-		ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
-		if (ad->was_interface_claimed != 0) {
+		ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0) == 0;
+		if (!ad->was_interface_claimed) {
 			accessory_free_device(ad);
 			return NULL;
 		}
@@ -167,8 +167,8 @@ accessory_device *accessory_get_device_with_vid_pid(uint16_t vendor_id, uint16_t
 				}
 			}
 
-			ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
-			if (ad->was_interface_claimed != 0) {
+			ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0) == 0;
+			if (!ad->was_interface_claimed) {
 				accessory_free_device(ad);
 				continue;
 			}
@@ -303,8 +303,8 @@ static int accessory_setup(accessory_device *ad) {
 		usleep(CONNECT_TRIES_MS_DELAY * 1000);
 	}
 
-	ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0);
-	if (ad->was_interface_claimed != 0)
+	ad->was_interface_claimed = libusb_claim_interface(ad->handle, 0) == 0;
+	if (!ad->was_interface_claimed)
 		return -1;
 
 	return 0;
