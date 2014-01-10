@@ -12,6 +12,13 @@ The scheme is simple:<br>
 FAQ
 ===
 
+- To build on console use: gcc -g -o accessory $(pkg-config --cflags libusb-1.0) *.c $(pkg-config --libs libusb-1.0)
+  
+  That compiles and links everything in one go, only one -g is needed, and pkg-config is used to get the correct compiler and linker flags for finding libusb files.
+  To debug it use: dbg ./accessory
+  To run it use: run [options]
+  To catch stack after a segfault use: "fb"
+
 - I get a "Permission denied" error when I try to execute the program. Is mandatory to run it with root user priviledges ?
 
   Usually to access to /dev/ttyUSBx you need root rights but how you can see with "ls -l /dev/ttyUSBx" you can solve
