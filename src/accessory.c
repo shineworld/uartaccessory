@@ -51,12 +51,12 @@
 #define ACCESSORY_SEND_HID_EVENT		57
 #define ACCESSORY_SET_AUDIO_MODE		58
 
-#define ACCESSORY_MANUFACTURER			"SHINE"
-#define ACCESSORY_MODEL				"Android Accessory Emulator"
-#define ACCESSORY_DESCRIPTION			"SHINE Android Accessory Emulator"
-#define ACCESSORY_VERSION				"1.0"
-#define ACCESSORY_URI					"https://github.com/shineworld/uartaccessory"
-#define ACCESSORY_SERIAL				"SHINE Emulator"
+#define ACCESSORY_MANUFACTURER			"SHINE\0"
+#define ACCESSORY_MODEL				"Android Accessory Emulator\0"
+#define ACCESSORY_DESCRIPTION			"SHINE Android Accessory Emulator\0"
+#define ACCESSORY_VERSION				"1.0\0"
+#define ACCESSORY_URI					"https://github.com/shineworld/uartaccessory\0"
+#define ACCESSORY_SERIAL				"SHINE Emulator\0"
 
 #define VOID_ID						0xFFFF
 #define FDTI_ID						0x0403
@@ -245,19 +245,19 @@ static int accessory_setup(accessory_device *ad) {
 	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 0, (unsigned char *) ACCESSORY_MANUFACTURER, strlen(ACCESSORY_MANUFACTURER), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 1, (unsigned char *) ACCESSORY_MODEL, strlen(ACCESSORY_MODEL) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 1, (unsigned char *) ACCESSORY_MODEL, strlen(ACCESSORY_MODEL), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 2, (unsigned char *) ACCESSORY_DESCRIPTION, strlen(ACCESSORY_DESCRIPTION) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 2, (unsigned char *) ACCESSORY_DESCRIPTION, strlen(ACCESSORY_DESCRIPTION), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 3, (unsigned char *) ACCESSORY_VERSION, strlen(ACCESSORY_VERSION) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 3, (unsigned char *) ACCESSORY_VERSION, strlen(ACCESSORY_VERSION), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 4, (unsigned char *) ACCESSORY_URI, strlen(ACCESSORY_URI) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 4, (unsigned char *) ACCESSORY_URI, strlen(ACCESSORY_URI), 0);
 	if (res < 0)
 		return -1;
-	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 5, (unsigned char *) ACCESSORY_SERIAL, strlen(ACCESSORY_SERIAL) + 1, 0);
+	res = libusb_control_transfer(ad->handle, USB_DIR_OUT | USB_TYPE_VENDOR, ACCESSORY_SEND_STRING, 0, 5, (unsigned char *) ACCESSORY_SERIAL, strlen(ACCESSORY_SERIAL), 0);
 	if (res < 0)
 		return -1;
 
@@ -331,7 +331,7 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) {
 	const static int PACKET_BULK_LEN = 512;
 	const static int MAX_TRIES = 5;
-	const static int TIMEOUT = 2;
+	const static int TIMEOUT = 10;
 	int transferred = 0;
 	int to_send = 0;
 	int tries = 0;

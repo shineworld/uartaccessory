@@ -217,14 +217,12 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (option_no_reply == 0 && option_closed_loop == 0) {
-				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_MODE_BUFFER_SIZE, 1);
+				cnt = uart_receive_buffer_timout(buffer, ACCESSORY_MODE_BUFFER_SIZE, 0);
 				if (cnt > 0) {
 					accessory_send_data(ad, buffer, cnt);
 					print_buffer(buffer, cnt, 1);
 				}
 			}
-
-			usleep(1000);
 		}
 		free(buffer);
 	}
