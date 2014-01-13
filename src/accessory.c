@@ -67,9 +67,6 @@
 
 #define LIBUSB_VERBOSE_LEVEL			0
 
-#define ENDPOINT_BULK_IN 				0x81
-#define ENDPOINT_BULK_OUT 				0x04
-
 static int accessory_setup(accessory_device *ad);
 
 static libusb_context *ctx = NULL;
@@ -228,6 +225,10 @@ static int accessory_setup(accessory_device *ad) {
 
 	if (ad->vendor_id == USB_ACCESSORY_VENDOR_ID) {
 		if (ad->product_id == USB_ACCESSORY_PRODUCT_ID || ad->product_id == USB_ACCESSORY_ADB_PRODUCT_ID) {
+
+			if (accessory_get_endpoints(ad))
+				return -1;
+
 			ad->aoa_vendor_id = ad->vendor_id;
 			ad->aoa_product_id = ad->product_id;
 			return 0;
@@ -307,7 +308,44 @@ static int accessory_setup(accessory_device *ad) {
 	if (!ad->was_interface_claimed)
 		return -1;
 
+	if (accessory_get_endpoints(ad))
+		return -1;
+
 	return 0;
+}
+
+int accessory_get_endpoints(accessory_device *ad) {
+	int c, i, a;
+
+	struct libusb_device* dev = libusb_get_device(ad->handle);
+	if (dev == NULL)
+		return -1;
+
+	struct libusb_device_descriptor dev_desc;
+	if (libusb_get_device_descriptor(dev, &dev_desc))
+		return -1;
+
+	for (c = 0; c < dev_desc.bNumConfigurations; c++) {
+		struct libusb_config_descriptor *config_desc;
+		if (libusb_get_config_descriptor(dev, c, &config_desc))
+			return -1;
+		for (i = 0; i < config_desc->bNumInterfaces; i++) {
+			for (a = 0; a < config_desc[c].interface[i].num_altsetting; a++) {
+				if (config_desc[c].interface[i].altsetting[a].iInterface == 5) {
+					if (config_desc[c].interface[i].altsetting[a].bNumEndpoints != 2) {
+						libusb_free_config_descriptor(config_desc);
+						return -1;
+					}
+					ad->aoa_endpoint_in = config_desc[c].interface[i].altsetting[a].endpoint[0].bEndpointAddress;
+					ad->aoa_endpoint_out = config_desc[c].interface[i].altsetting[a].endpoint[1].bEndpointAddress;
+					libusb_free_config_descriptor(config_desc);
+					return 0;
+				}
+			}
+		}
+		libusb_free_config_descriptor(config_desc);
+	}
+	return -1;
 }
 
 /**
@@ -319,7 +357,7 @@ int accessory_receive_data(accessory_device *ad, unsigned char *buffer, int buff
 	const static int TIMEOUT = 2;
 	int transferred = 0;
 
-	int r = libusb_bulk_transfer(ad->handle, ENDPOINT_BULK_IN, buffer, buffer_size, &transferred, TIMEOUT);
+	int r = libusb_bulk_transfer(ad->handle, ad->aoa_endpoint_in, buffer, buffer_size, &transferred, TIMEOUT);
 	if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
 		return r;
 	// fix upon described issue
@@ -341,7 +379,7 @@ void accessory_send_data(accessory_device *ad, unsigned char *buffer, int size) 
 		to_send = size - sent;
 		if (to_send > PACKET_BULK_LEN)
 			to_send = PACKET_BULK_LEN;
-		int r = libusb_bulk_transfer(ad->handle, (ENDPOINT_BULK_OUT), &buffer[sent], to_send, &transferred, TIMEOUT);
+		int r = libusb_bulk_transfer(ad->handle, ad->aoa_endpoint_out, &buffer[sent], to_send, &transferred, TIMEOUT);
 		if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
 			break;
 		if (transferred > 0) {
